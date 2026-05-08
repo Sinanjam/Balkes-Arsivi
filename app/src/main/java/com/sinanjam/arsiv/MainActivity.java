@@ -10,10 +10,12 @@ import android.content.ContentResolver;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -21,22 +23,25 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-<<<<<<< HEAD
-=======
 import android.os.Handler;
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
+import android.os.StrictMode;
 import android.provider.MediaStore;
+import android.text.Editable;
 import android.text.Html;
+import android.text.Spannable;
+import android.text.SpannableString;
+import android.text.TextWatcher;
 import android.text.Spanned;
 import android.text.method.LinkMovementMethod;
+import android.text.style.BackgroundColorSpan;
+import android.text.style.StyleSpan;
 import android.view.Gravity;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
-<<<<<<< HEAD
-=======
 import android.widget.EditText;
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
 import android.widget.FrameLayout;
 import android.widget.HorizontalScrollView;
 import android.widget.ImageView;
@@ -50,15 +55,6 @@ import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-<<<<<<< HEAD
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Locale;
-=======
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -73,29 +69,18 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
 
 public class MainActivity extends Activity {
     private static final String PREFS = "balkes_arsivi_prefs";
     private static final String KEY_DARK = "dark_theme";
     private static final String KEY_TEXT_SIZE = "text_size_sp";
-<<<<<<< HEAD
-    private static final String CHANNEL_ID = "balkes_arsivi_save_channel";
-    private static final int REQUEST_WRITE_STORAGE = 2210;
-    private static final int REQUEST_NOTIFICATIONS = 2211;
-
-    private final ArrayList<ArchiveItem> archiveItems = new ArrayList<ArchiveItem>();
-    private SharedPreferences prefs;
-    private boolean darkTheme;
-    private int textSizeSp;
-    private String screen = "home";
-    private ArchiveItem currentItem;
-    private int currentPhotoIndex = 0;
-=======
     private static final String KEY_REMOTE_JSON = "remote_archive_json";
     private static final String KEY_REMOTE_HASH = "remote_archive_hash";
     private static final String KEY_LAST_READ_ID = "last_read_id";
     private static final String KEY_FAVORITES = "favorite_ids";
+    private static final String KEY_FAVORITE_PHOTOS = "favorite_photo_ids";
+    private static final String KEY_LAST_UPDATE_TEXT = "last_update_text";
+    private static final String KEY_READER_MODE = "reader_mode";
     private static final String CHANNEL_ID = "balkes_arsivi_save_channel";
     private static final int REQUEST_WRITE_STORAGE = 2210;
     private static final int REQUEST_NOTIFICATIONS = 2211;
@@ -113,7 +98,6 @@ public class MainActivity extends Activity {
     private ArchiveItem currentItem;
     private int currentPhotoIndex = 0;
     private int currentAlbumIndex = 0;
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
     private boolean pendingPhotoSave;
     private String pendingNotificationLocation;
 
@@ -123,9 +107,6 @@ public class MainActivity extends Activity {
         String sourceUrl;
     }
 
-<<<<<<< HEAD
-    private static class ArchiveItem {
-=======
     private static class AlbumPhoto {
         ArchiveItem item;
         PhotoItem photo;
@@ -134,7 +115,6 @@ public class MainActivity extends Activity {
 
     private static class ArchiveItem {
         String id;
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         String title;
         String season;
         String summary;
@@ -153,19 +133,13 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-<<<<<<< HEAD
-=======
         handler = new Handler(getMainLooper());
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         darkTheme = prefs.getBoolean(KEY_DARK, false);
         textSizeSp = prefs.getInt(KEY_TEXT_SIZE, 18);
         createNotificationChannel();
         loadArchiveItems();
         showHome();
-<<<<<<< HEAD
-=======
         checkForGithubUpdates(false);
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
     }
 
     private void showHome() {
@@ -183,11 +157,7 @@ public class MainActivity extends Activity {
         root.addView(background, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
         View overlay = new View(this);
-<<<<<<< HEAD
-        overlay.setBackgroundColor(darkTheme ? Color.argb(130, 25, 0, 0) : Color.argb(112, 255, 255, 255));
-=======
         overlay.setBackgroundColor(darkTheme ? Color.argb(132, 25, 0, 0) : Color.argb(115, 255, 255, 255));
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         root.addView(overlay, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
 
         ImageView signature = new ImageView(this);
@@ -211,19 +181,13 @@ public class MainActivity extends Activity {
         themeParams.setMargins(0, dp(14), dp(12), 0);
         root.addView(themeButton, themeParams);
 
-<<<<<<< HEAD
-=======
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
         content.setGravity(Gravity.CENTER_HORIZONTAL);
         content.setPadding(dp(20), dp(84), dp(20), dp(28));
-<<<<<<< HEAD
-=======
         scroll.addView(content);
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
 
         ImageView banner = new ImageView(this);
         banner.setImageResource(R.drawable.balkes_1966_banner);
@@ -240,11 +204,6 @@ public class MainActivity extends Activity {
         content.addView(title, titleParams);
 
         TextView archiveCard = homeCard("Balkes Arşivi");
-<<<<<<< HEAD
-        archiveCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveList(); } });
-        content.addView(archiveCard, homeCardParams());
-
-=======
         archiveCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveList(""); } });
         content.addView(archiveCard, homeCardParams());
 
@@ -256,28 +215,15 @@ public class MainActivity extends Activity {
         favoriteCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritesList(); } });
         content.addView(favoriteCard, homeCardParams());
 
-        ArchiveItem last = findById(prefs.getString(KEY_LAST_READ_ID, ""));
-        if (last != null) {
-            TextView lastCard = homeCard("Son Okunan");
-            lastCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(last, 0); } });
-            content.addView(lastCard, homeCardParams());
-        }
+        TextView updateInfo = descriptionText(updateStatusText());
+        LinearLayout.LayoutParams updateInfoParams = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        updateInfoParams.setMargins(0, 0, 0, dp(8));
+        content.addView(updateInfo, updateInfoParams);
 
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         TextView aboutCard = homeCard("Uygulama Hakkında");
         aboutCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showAbout(); } });
         content.addView(aboutCard, homeCardParams());
 
-<<<<<<< HEAD
-        root.addView(content, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        setContentView(root);
-    }
-
-    private void showArchiveList() {
-        screen = "archive_list";
-        currentItem = null;
-        currentPhotoIndex = 0;
-=======
         root.addView(scroll, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         signature.bringToFront();
         themeButton.bringToFront();
@@ -289,54 +235,26 @@ public class MainActivity extends Activity {
         currentItem = null;
         currentPhotoIndex = 0;
         currentQuery = query == null ? "" : query;
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         applyBars();
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
         scrollView.setBackgroundColor(pageBackground());
-<<<<<<< HEAD
-
-        LinearLayout root = pageRoot();
-        scrollView.addView(root);
-        root.addView(sectionHeader("Balkes Arşivi"));
-        root.addView(descriptionText("Balıkesirspor sezon arşivleri. Normal ÖzBalkesler haberleri bu pakete dahil edilmedi."));
-
-        for (int i = 0; i < archiveItems.size(); i++) {
-            final ArchiveItem item = archiveItems.get(i);
-            View row = listCard(item);
-            row.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(item, 0); } });
-            root.addView(row, listCardParams());
-=======
         LinearLayout root = pageRoot();
         scrollView.addView(root);
 
         root.addView(sectionHeader("Balkes Arşivi"));
-        addSearchArea(root, currentQuery, false);
+        root.addView(descriptionText(updateStatusText()));
 
-        LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(LinearLayout.HORIZONTAL);
-        actions.setGravity(Gravity.CENTER);
-        Button update = pillButton("GitHub’dan Güncelle");
+        Button update = wideButton("Güncellemeyi Kontrol Et");
         update.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { checkForGithubUpdates(true); } });
-        Button favs = pillButton("Favoriler");
-        favs.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritesList(); } });
-        actions.addView(update, pillParams());
-        actions.addView(favs, pillParams());
-        root.addView(actions);
+        root.addView(update, compactButtonParams());
 
-        ArrayList<ArchiveItem> filtered = filterItems(currentQuery, false);
-        if (filtered.size() == 0) {
-            root.addView(descriptionText("Sonuç bulunamadı."));
-        } else {
-            for (int i = 0; i < filtered.size(); i++) {
-                final ArchiveItem item = filtered.get(i);
-                View row = listCard(item);
-                row.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(item, 0); } });
-                root.addView(row, listCardParams());
-            }
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
-        }
+        final LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        addSearchArea(root, currentQuery, results);
+        root.addView(results, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        populateArchiveResults(results, false);
 
         Button home = wideButton("Ana Ekrana Dön");
         home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
@@ -344,11 +262,9 @@ public class MainActivity extends Activity {
         setContentView(scrollView);
     }
 
-<<<<<<< HEAD
-    private void showArchiveDetail(ArchiveItem item, int photoIndex) {
-=======
     private void showFavoritesList() {
         screen = "favorites";
+        currentQuery = "";
         currentItem = null;
         currentPhotoIndex = 0;
         applyBars();
@@ -361,8 +277,9 @@ public class MainActivity extends Activity {
         root.addView(sectionHeader("Favoriler"));
 
         ArrayList<ArchiveItem> favorites = filterItems("", true);
+        root.addView(sectionSubHeader("Favori Yazılar"));
         if (favorites.size() == 0) {
-            root.addView(descriptionText("Henüz favori eklenmedi."));
+            root.addView(emptyState("Henüz favori yazı yok", "Sevdiğin sezon arşivlerini yıldızla işaretleyebilirsin."));
         } else {
             for (int i = 0; i < favorites.size(); i++) {
                 final ArchiveItem item = favorites.get(i);
@@ -372,9 +289,19 @@ public class MainActivity extends Activity {
             }
         }
 
-        Button archive = wideButton("Arşive Dön");
-        archive.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveList(currentQuery); } });
-        root.addView(archive, compactButtonParams());
+        root.addView(sectionSubHeader("Favori Fotoğraflar"));
+        ArrayList<AlbumPhoto> favPhotos = favoriteAlbumPhotos();
+        if (favPhotos.size() == 0) {
+            root.addView(emptyState("Henüz favori fotoğraf yok", "Fotoğraf ekranında kalp işaretine basarak albümünü oluşturabilirsin."));
+        } else {
+            for (int i = 0; i < favPhotos.size(); i++) {
+                final AlbumPhoto ap = favPhotos.get(i);
+                View row = photoFavoriteCard(ap);
+                row.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(ap.item, ap.photoIndex); } });
+                root.addView(row, listCardParams());
+            }
+        }
+
         Button home = wideButton("Ana Ekrana Dön");
         home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
         root.addView(home, wideButtonParams());
@@ -406,9 +333,8 @@ public class MainActivity extends Activity {
 
         root.addView(sectionHeader("Fotoğraf Albümü"));
 
-        ImageView image = new ImageView(this);
+        ZoomableImageView image = new ZoomableImageView(this);
         setImageFromPath(image, albumPhoto.photo.asset, R.drawable.sample_photo);
-        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
         image.setAdjustViewBounds(false);
         image.setContentDescription("Balkes Arşivi fotoğrafı");
         image.setOnLongClickListener(new View.OnLongClickListener() {
@@ -419,8 +345,8 @@ public class MainActivity extends Activity {
         });
         root.addView(image, imageParams());
 
-        String caption = hasText(albumPhoto.photo.caption) ? albumPhoto.photo.caption : albumPhoto.item.title;
-        root.addView(descriptionText("Fotoğraf " + (currentAlbumIndex + 1) + "/" + albumPhotos.size() + "\n" + albumPhoto.item.title + "\n" + caption));
+        root.addView(descriptionText("Fotoğraf " + (currentAlbumIndex + 1) + "/" + albumPhotos.size() + "  •  " + albumPhoto.item.title));
+        addPhotoActionRow(root, albumPhoto.photo);
 
         LinearLayout nav = new LinearLayout(this);
         nav.setOrientation(LinearLayout.HORIZONTAL);
@@ -441,58 +367,56 @@ public class MainActivity extends Activity {
         setContentView(scrollView);
     }
 
-    private void addSearchArea(LinearLayout root, String query, final boolean favoritesOnly) {
+    private void addSearchArea(LinearLayout root, String query, final LinearLayout results) {
         final EditText search = new EditText(this);
         search.setSingleLine(true);
         search.setText(query == null ? "" : query);
-        search.setHint("Sezon, takım, futbolcu, skor ara");
+        search.setHint("Yazdıkça ara: sezon, takım, futbolcu, skor");
         search.setTextColor(textColor());
         search.setHintTextColor(secondaryTextColor());
         search.setTextSize(16);
         search.setPadding(dp(14), 0, dp(14), 0);
-        search.setBackground(roundedBox(cardBackground(), accentColor(), dp(16), dp(1)));
-        root.addView(search, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(50)));
+        search.setBackground(roundedBox(cardBackground(), subtleStrokeColor(), dp(18), dp(1)));
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(52));
+        sp.setMargins(0, dp(8), 0, dp(12));
+        root.addView(search, sp);
 
-        LinearLayout buttons = new LinearLayout(this);
-        buttons.setOrientation(LinearLayout.HORIZONTAL);
-        buttons.setGravity(Gravity.CENTER);
-        Button ara = pillButton("Ara");
-        Button temizle = pillButton("Temizle");
-        ara.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                if (favoritesOnly) showFavoritesList();
-                else showArchiveList(search.getText().toString());
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
+            @Override public void afterTextChanged(Editable editable) {
+                currentQuery = editable == null ? "" : editable.toString();
+                populateArchiveResults(results, false);
             }
         });
-        temizle.setOnClickListener(new View.OnClickListener() {
-            @Override public void onClick(View v) {
-                if (favoritesOnly) showFavoritesList();
-                else showArchiveList("");
-            }
-        });
-        buttons.addView(ara, pillParams());
-        buttons.addView(temizle, pillParams());
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        bp.setMargins(0, dp(8), 0, dp(10));
-        root.addView(buttons, bp);
+    }
+
+    private void populateArchiveResults(LinearLayout results, boolean favoritesOnly) {
+        results.removeAllViews();
+        ArrayList<ArchiveItem> filtered = filterItems(currentQuery, favoritesOnly);
+        if (filtered.size() == 0) {
+            results.addView(emptyState(hasText(currentQuery) ? "Sonuç bulunamadı" : "Arşiv kaydı bulunamadı", hasText(currentQuery) ? "Farklı bir sezon, futbolcu veya skor deneyin." : "Veri güncellemesi yaparak tekrar deneyin."));
+            return;
+        }
+        TextView count = descriptionText(filtered.size() + " sonuç");
+        results.addView(count);
+        for (int i = 0; i < filtered.size(); i++) {
+            final ArchiveItem item = filtered.get(i);
+            View row = listCard(item);
+            row.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(item, 0); } });
+            results.addView(row, listCardParams());
+        }
     }
 
     private void showArchiveDetail(final ArchiveItem item, int photoIndex) {
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         screen = "archive_detail";
         currentItem = item;
         if (item.photos.size() == 0) currentPhotoIndex = 0;
         else currentPhotoIndex = Math.max(0, Math.min(photoIndex, item.photos.size() - 1));
-<<<<<<< HEAD
-        applyBars();
-
-        ScrollView scrollView = new ScrollView(this);
-=======
         prefs.edit().putString(KEY_LAST_READ_ID, item.id).apply();
         applyBars();
 
         final ScrollView scrollView = new ScrollView(this);
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         scrollView.setFillViewport(true);
         scrollView.setBackgroundColor(pageBackground());
         LinearLayout root = pageRoot();
@@ -509,36 +433,37 @@ public class MainActivity extends Activity {
         if (item.tableCount > 0) meta += (meta.length() > 0 ? "  •  " : "") + item.tableCount + " tablo";
         if (hasText(meta)) root.addView(descriptionText(meta));
 
-<<<<<<< HEAD
-=======
         LinearLayout actionRow = new LinearLayout(this);
         actionRow.setOrientation(LinearLayout.HORIZONTAL);
         actionRow.setGravity(Gravity.CENTER);
-        final Button favorite = pillButton(isFavorite(item.id) ? "★ Favori" : "☆ Favori");
-        Button album = pillButton("Albümde Aç");
+        final Button favorite = pillButton(isFavorite(item.id) ? "★ Yazı" : "☆ Yazı");
+        Button album = pillButton("Albüm");
+        final Button readerToggle = pillButton(readerMode() ? "Tam Görünüm" : "Sade Okuma");
         favorite.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 toggleFavorite(item.id);
-                favorite.setText(isFavorite(item.id) ? "★ Favori" : "☆ Favori");
+                favorite.setText(isFavorite(item.id) ? "★ Yazı" : "☆ Yazı");
             }
         });
         album.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) { showPhotoAlbum(albumIndexFor(item, currentPhotoIndex)); }
         });
+        readerToggle.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                prefs.edit().putBoolean(KEY_READER_MODE, !readerMode()).apply();
+                showArchiveDetail(item, currentPhotoIndex);
+            }
+        });
         actionRow.addView(favorite, pillParams());
         actionRow.addView(album, pillParams());
+        actionRow.addView(readerToggle, pillParams());
         root.addView(actionRow);
 
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
-        addPhotoGallery(root, item);
+        if (!readerMode()) addPhotoGallery(root, item);
         addTextSizeControls(root);
 
         TextView body = new TextView(this);
-<<<<<<< HEAD
-        body.setText(hasText(item.content) ? item.content : item.summary);
-=======
         body.setText(cleanReaderText(hasText(item.content) ? item.content : item.summary));
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         body.setTextSize(textSizeSp);
         body.setLineSpacing(0, 1.22f);
         body.setTextColor(textColor());
@@ -546,38 +471,16 @@ public class MainActivity extends Activity {
         body.setBackground(roundedBox(cardBackground(), accentColor(), dp(18), dp(1)));
         root.addView(body, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-<<<<<<< HEAD
-        if (hasText(item.tables)) {
-            root.addView(sectionSubHeader("Tablolar"));
-            HorizontalScrollView tableScroll = new HorizontalScrollView(this);
-            tableScroll.setFillViewport(true);
-            TextView tableText = new TextView(this);
-            tableText.setText(item.tables);
-            tableText.setTypeface(Typeface.MONOSPACE);
-            tableText.setTextSize(Math.max(11, textSizeSp - 4));
-            tableText.setTextColor(textColor());
-            tableText.setLineSpacing(0, 1.08f);
-            tableText.setPadding(dp(14), dp(14), dp(14), dp(14));
-            tableText.setBackground(roundedBox(cardBackground(), accentColor(), dp(16), dp(1)));
-            tableScroll.addView(tableText, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT));
-            LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            sp.setMargins(0, dp(8), 0, dp(16));
-            root.addView(tableScroll, sp);
-        }
-=======
-        addPrettyTables(root, item.tables);
+        if (!readerMode()) addPrettyTables(root, item.tables);
 
         Button top = wideButton("Başa Dön");
         top.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { scrollView.smoothScrollTo(0, 0); } });
         root.addView(top, compactButtonParams());
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
 
         Button home = wideButton("Ana Ekrana Dön");
         home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
         root.addView(home, wideButtonParams());
         setContentView(scrollView);
-<<<<<<< HEAD
-=======
 
         final String scrollKey = "scroll_" + item.id;
         scrollView.post(new Runnable() {
@@ -588,32 +491,19 @@ public class MainActivity extends Activity {
                 prefs.edit().putInt(scrollKey, scrollY).apply();
             }
         });
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
     }
 
     private void addPhotoGallery(LinearLayout root, final ArchiveItem item) {
         if (item.photos.size() == 0) {
-            ImageView image = new ImageView(this);
+            ZoomableImageView image = new ZoomableImageView(this);
             image.setImageResource(R.drawable.sample_photo);
-            image.setScaleType(ImageView.ScaleType.CENTER_CROP);
             root.addView(image, imageParams());
-<<<<<<< HEAD
-            root.addView(descriptionText("Balkes Arşivi görseli. Kaydetmek için görsele uzun bas."));
-=======
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
             return;
         }
 
         final PhotoItem photo = item.photos.get(currentPhotoIndex);
-        ImageView image = new ImageView(this);
-<<<<<<< HEAD
-        Bitmap bitmap = loadAssetBitmap(photo.asset);
-        if (bitmap != null) image.setImageBitmap(bitmap);
-        else image.setImageResource(R.drawable.sample_photo);
-=======
+        ZoomableImageView image = new ZoomableImageView(this);
         setImageFromPath(image, photo.asset, R.drawable.sample_photo);
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
-        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
         image.setAdjustViewBounds(false);
         image.setBackgroundColor(Color.TRANSPARENT);
         image.setContentDescription("Balkes Arşivi görseli");
@@ -625,12 +515,8 @@ public class MainActivity extends Activity {
         });
         root.addView(image, imageParams());
 
-        String caption = hasText(photo.caption) ? photo.caption : item.title;
-<<<<<<< HEAD
-        root.addView(descriptionText("Fotoğraf " + (currentPhotoIndex + 1) + "/" + item.photos.size() + "\n" + caption + "\nKaydetmek için görsele uzun bas."));
-=======
-        root.addView(descriptionText("Fotoğraf " + (currentPhotoIndex + 1) + "/" + item.photos.size() + "\n" + caption));
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
+        root.addView(descriptionText("Fotoğraf " + (currentPhotoIndex + 1) + "/" + item.photos.size() + "  •  yakınlaştırmak için çift parmak kullan"));
+        addPhotoActionRow(root, photo);
 
         if (item.photos.size() > 1) {
             LinearLayout nav = new LinearLayout(this);
@@ -646,6 +532,24 @@ public class MainActivity extends Activity {
             nav.addView(next, pillParams());
             root.addView(nav);
         }
+    }
+
+    private void addPhotoActionRow(LinearLayout root, final PhotoItem photo) {
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        final Button favPhoto = pillButton(isPhotoFavorite(photo.asset) ? "♥ Foto" : "♡ Foto");
+        Button share = pillButton("Görseli Paylaş");
+        favPhoto.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                togglePhotoFavorite(photo.asset);
+                favPhoto.setText(isPhotoFavorite(photo.asset) ? "♥ Foto" : "♡ Foto");
+            }
+        });
+        share.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { shareCurrentPhoto(); } });
+        row.addView(favPhoto, pillParams());
+        row.addView(share, pillParams());
+        root.addView(row);
     }
 
     private void addTextSizeControls(LinearLayout root) {
@@ -664,8 +568,6 @@ public class MainActivity extends Activity {
         root.addView(controls);
     }
 
-<<<<<<< HEAD
-=======
     private void addPrettyTables(LinearLayout root, String markdown) {
         if (!hasText(markdown)) return;
         root.addView(sectionSubHeader("Tablolar"));
@@ -699,6 +601,7 @@ public class MainActivity extends Activity {
                 row.setOrientation(LinearLayout.HORIZONTAL);
                 row.setGravity(Gravity.CENTER_VERTICAL);
                 boolean header = !headerPainted;
+                int rowFill = header ? accentColor() : (table.getChildCount() % 2 == 0 ? cardBackground() : softTableAltColor());
                 for (int j = 0; j < cells.size(); j++) {
                     TextView cell = new TextView(this);
                     cell.setText(cells.get(j));
@@ -708,7 +611,7 @@ public class MainActivity extends Activity {
                     cell.setGravity(Gravity.CENTER_VERTICAL);
                     cell.setMinWidth(j == 1 ? dp(142) : dp(72));
                     cell.setPadding(dp(8), dp(7), dp(8), dp(7));
-                    cell.setBackground(roundedBox(header ? accentColor() : cardBackground(), header ? accentColor() : subtleStrokeColor(), dp(6), dp(1)));
+                    cell.setBackground(roundedBox(rowFill, header ? accentColor() : subtleStrokeColor(), dp(6), dp(1)));
                     LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT);
                     cp.setMargins(dp(2), dp(2), dp(2), dp(2));
                     row.addView(cell, cp);
@@ -747,7 +650,6 @@ public class MainActivity extends Activity {
         return view;
     }
 
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
     private void showAbout() {
         screen = "about";
         currentItem = null;
@@ -773,11 +675,6 @@ public class MainActivity extends Activity {
         TextView about = new TextView(this);
         String html = "<b>Balkes Arşivi</b><br><br>" +
                 "Kapatılan Balkes Arşivi projesinden kurtarılan verilerle yapılmış Balıkesirspor Arşivi.<br><br>" +
-<<<<<<< HEAD
-                "Bu final pakette veriler uygulama içinde yerel tutulur: metinler, tablolar ve görseller APK içine gömülüdür.<br><br>" +
-                "Normal ÖzBalkesler haberleri ayrılmış, yalnızca Balıkesirspor sezon arşivi sayfaları eklenmiştir.<br><br>" +
-=======
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
                 "Vibecoding'ten faydalanılmıştır.<br><br>" +
                 "Github, kaynak kodu ve iletişim: <a href=\"https://github.com/Sinanjam/Balkes-Arsivi.git\">https://github.com/Sinanjam/Balkes-Arsivi.git</a>";
         Spanned text;
@@ -871,17 +768,35 @@ public class MainActivity extends Activity {
 
     private Bitmap currentBitmapForSave() {
         if (currentItem != null && currentItem.photos.size() > 0 && currentPhotoIndex >= 0 && currentPhotoIndex < currentItem.photos.size()) {
-<<<<<<< HEAD
-            Bitmap bitmap = loadAssetBitmap(currentItem.photos.get(currentPhotoIndex).asset);
-=======
             String path = currentItem.photos.get(currentPhotoIndex).asset;
             Bitmap bitmap = loadAssetBitmap(path);
             if (bitmap != null) return bitmap;
             bitmap = loadCachedBitmap(path);
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
             if (bitmap != null) return bitmap;
         }
         return BitmapFactory.decodeResource(getResources(), R.drawable.sample_photo);
+    }
+
+    private void shareCurrentPhoto() {
+        try {
+            Bitmap bitmap = currentBitmapForSave();
+            if (bitmap == null) throw new Exception("Görsel okunamadı");
+            File dir = new File(getCacheDir(), "share");
+            if (!dir.exists()) dir.mkdirs();
+            File file = new File(dir, "balkes_arsivi_paylas.jpg");
+            FileOutputStream out = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 96, out);
+            out.flush();
+            out.close();
+            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder().build());
+            Intent intent = new Intent(Intent.ACTION_SEND);
+            intent.setType("image/jpeg");
+            intent.putExtra(Intent.EXTRA_STREAM, Uri.fromFile(file));
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            startActivity(Intent.createChooser(intent, "Görseli Paylaş"));
+        } catch (Exception e) {
+            Toast.makeText(this, "Görsel paylaşılamadı.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void showSavedNotification(String location) {
@@ -939,13 +854,9 @@ public class MainActivity extends Activity {
     private void changeTextSize(int delta) {
         textSizeSp = Math.max(13, Math.min(30, textSizeSp + delta));
         prefs.edit().putInt(KEY_TEXT_SIZE, textSizeSp).apply();
-<<<<<<< HEAD
-        if (currentItem != null) showArchiveDetail(currentItem, currentPhotoIndex); else showArchiveList();
-=======
         if (currentItem != null) showArchiveDetail(currentItem, currentPhotoIndex);
         else if ("archive_list".equals(screen)) showArchiveList(currentQuery);
         else showHome();
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
     }
 
     @Override
@@ -962,17 +873,68 @@ public class MainActivity extends Activity {
         }
     }
 
+
+    private void showLoadingPage(String title, String subtitle) {
+        screen = "loading";
+        applyBars();
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        scrollView.addView(root);
+        root.addView(sectionHeader(title));
+        root.addView(descriptionText(subtitle));
+        root.addView(skeletonBlock(dp(72)));
+        root.addView(skeletonBlock(dp(112)));
+        root.addView(skeletonBlock(dp(72)));
+        setContentView(scrollView);
+    }
+
+    private View skeletonBlock(int height) {
+        View v = new View(this);
+        v.setBackground(roundedBox(darkTheme ? Color.rgb(58, 38, 38) : Color.rgb(255, 235, 235), subtleStrokeColor(), dp(18), dp(1)));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, height);
+        lp.setMargins(0, dp(8), 0, dp(8));
+        v.setLayoutParams(lp);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) v.setElevation(dp(2));
+        return v;
+    }
+
+    private View emptyState(String title, String subtitle) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.CENTER);
+        box.setPadding(dp(16), dp(18), dp(16), dp(18));
+        box.setBackground(roundedBox(cardBackground(), subtleStrokeColor(), dp(20), dp(1)));
+        TextView t = new TextView(this);
+        t.setText(title);
+        t.setTextColor(textColor());
+        t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setTextSize(17);
+        t.setGravity(Gravity.CENTER);
+        box.addView(t, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        TextView s = descriptionText(subtitle);
+        box.addView(s, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        return box;
+    }
+
+    private String updateStatusText() {
+        String last = prefs.getString(KEY_LAST_UPDATE_TEXT, "");
+        if (!hasText(last)) return "Sürüm 1.7 Kırmızı Beyaz Hafıza • yerel arşiv hazır";
+        return "Sürüm 1.7 Kırmızı Beyaz Hafıza • son güncelleme: " + last;
+    }
+
+    private String nowText() {
+        return new SimpleDateFormat("dd.MM.yyyy HH:mm", new Locale("tr", "TR")).format(new Date());
+    }
+
+    private boolean readerMode() {
+        return prefs.getBoolean(KEY_READER_MODE, false);
+    }
+
     private void loadArchiveItems() {
         archiveItems.clear();
-<<<<<<< HEAD
-        try {
-            String json = readAssetText("archive/archive_items.json");
-            JSONObject root = new JSONObject(json);
-            JSONArray arr = root.getJSONArray("items");
-            for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.getJSONObject(i);
-                ArchiveItem item = new ArchiveItem();
-=======
         boolean loaded = false;
         String cached = prefs.getString(KEY_REMOTE_JSON, "");
         if (hasText(cached)) loaded = parseArchiveItems(cached);
@@ -1001,7 +963,6 @@ public class MainActivity extends Activity {
                 JSONObject o = arr.getJSONObject(i);
                 ArchiveItem item = new ArchiveItem();
                 item.id = o.optString("id");
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
                 item.title = o.optString("title");
                 item.season = o.optString("season");
                 item.summary = o.optString("summary");
@@ -1018,7 +979,7 @@ public class MainActivity extends Activity {
                         JSONObject po = photos.getJSONObject(p);
                         PhotoItem photo = new PhotoItem();
                         photo.asset = po.optString("asset");
-                        photo.caption = po.optString("caption");
+                        photo.caption = cleanReaderText(po.optString("caption"));
                         photo.sourceUrl = po.optString("sourceUrl");
                         if (hasText(photo.asset)) item.photos.add(photo);
                     }
@@ -1026,25 +987,9 @@ public class MainActivity extends Activity {
                 if (item.photos.size() == 0 && hasText(item.imageAsset)) {
                     PhotoItem photo = new PhotoItem();
                     photo.asset = item.imageAsset;
-                    photo.caption = item.imageCaption;
+                    photo.caption = cleanReaderText(item.imageCaption);
                     item.photos.add(photo);
                 }
-<<<<<<< HEAD
-                if (!hasText(item.title)) item.title = "Balkes Arşivi";
-                if (!hasText(item.summary)) item.summary = item.content;
-                if (!hasText(item.content)) item.content = item.summary;
-                archiveItems.add(item);
-            }
-        } catch (Exception e) {
-            ArchiveItem item = new ArchiveItem();
-            item.title = "Balkes Arşivi";
-            item.summary = "Balıkesirspor hafızasından seçilen arşiv kayıtları.";
-            item.content = "Balıkesirspor hafızası; eski sezonlar, tribünler, fotoğraflar, maç günleri ve kırmızı-beyaz sevdanın ortak hatıralarından oluşur.";
-            archiveItems.add(item);
-        }
-    }
-
-=======
                 if (!hasText(item.id)) item.id = safeId(item.title + "_" + i);
                 if (!hasText(item.title)) item.title = "Balkes Arşivi";
                 if (!hasText(item.summary)) item.summary = item.content;
@@ -1061,7 +1006,7 @@ public class MainActivity extends Activity {
     }
 
     private void checkForGithubUpdates(final boolean manual) {
-        if (manual) Toast.makeText(this, "GitHub kontrol ediliyor...", Toast.LENGTH_SHORT).show();
+        if (manual) showLoadingPage("GitHub arşivi kontrol ediliyor", "Yeni metin ve fotoğraf verileri taranıyor...");
         new Thread(new Runnable() {
             @Override public void run() {
                 try {
@@ -1072,20 +1017,22 @@ public class MainActivity extends Activity {
                     if (!hash.equals(old)) {
                         JSONObject test = new JSONObject(remote);
                         test.getJSONArray("items");
-                        prefs.edit().putString(KEY_REMOTE_JSON, remote).putString(KEY_REMOTE_HASH, hash).apply();
+                        prefs.edit().putString(KEY_REMOTE_JSON, remote).putString(KEY_REMOTE_HASH, hash).putString(KEY_LAST_UPDATE_TEXT, nowText()).apply();
                         handler.post(new Runnable() {
                             @Override public void run() {
                                 loadArchiveItems();
                                 Toast.makeText(MainActivity.this, "Arşiv güncellendi.", Toast.LENGTH_LONG).show();
-                                if ("archive_list".equals(screen)) showArchiveList(currentQuery);
+                                if (manual) showArchiveList(currentQuery);
+                                else if ("archive_list".equals(screen)) showArchiveList(currentQuery);
                                 else if ("favorites".equals(screen)) showFavoritesList();
+                                else if ("home".equals(screen)) showHome();
                             }
                         });
                     } else if (manual) {
-                        handler.post(new Runnable() { @Override public void run() { Toast.makeText(MainActivity.this, "Arşiv güncel.", Toast.LENGTH_LONG).show(); } });
+                        handler.post(new Runnable() { @Override public void run() { Toast.makeText(MainActivity.this, "Arşiv güncel.", Toast.LENGTH_LONG).show(); showArchiveList(currentQuery); } });
                     }
                 } catch (Exception e) {
-                    if (manual) handler.post(new Runnable() { @Override public void run() { Toast.makeText(MainActivity.this, "GitHub verisi alınamadı.", Toast.LENGTH_LONG).show(); } });
+                    if (manual) handler.post(new Runnable() { @Override public void run() { Toast.makeText(MainActivity.this, "GitHub verisi alınamadı.", Toast.LENGTH_LONG).show(); showArchiveList(currentQuery); } });
                 }
             }
         }).start();
@@ -1165,6 +1112,37 @@ public class MainActivity extends Activity {
         return b.toString();
     }
 
+
+    private boolean isPhotoFavorite(String photoId) {
+        return photoFavoriteSet().contains(photoId);
+    }
+
+    private void togglePhotoFavorite(String photoId) {
+        if (!hasText(photoId)) return;
+        Set<String> set = photoFavoriteSet();
+        if (set.contains(photoId)) set.remove(photoId); else set.add(photoId);
+        prefs.edit().putString(KEY_FAVORITE_PHOTOS, joinSet(set)).apply();
+    }
+
+    private Set<String> photoFavoriteSet() {
+        HashSet<String> set = new HashSet<String>();
+        String raw = prefs.getString(KEY_FAVORITE_PHOTOS, "");
+        if (!hasText(raw)) return set;
+        String[] parts = raw.split("\\|");
+        for (int i = 0; i < parts.length; i++) if (hasText(parts[i])) set.add(parts[i]);
+        return set;
+    }
+
+    private ArrayList<AlbumPhoto> favoriteAlbumPhotos() {
+        ArrayList<AlbumPhoto> out = new ArrayList<AlbumPhoto>();
+        Set<String> favs = photoFavoriteSet();
+        for (int i = 0; i < albumPhotos.size(); i++) {
+            AlbumPhoto ap = albumPhotos.get(i);
+            if (ap.photo != null && favs.contains(ap.photo.asset)) out.add(ap);
+        }
+        return out;
+    }
+
     private ArchiveItem findById(String id) {
         if (!hasText(id)) return null;
         for (int i = 0; i < archiveItems.size(); i++) if (id.equals(archiveItems.get(i).id)) return archiveItems.get(i);
@@ -1179,7 +1157,6 @@ public class MainActivity extends Activity {
         return 0;
     }
 
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
     private String readAssetText(String path) throws Exception {
         InputStream in = getAssets().open(path);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -1202,8 +1179,6 @@ public class MainActivity extends Activity {
         }
     }
 
-<<<<<<< HEAD
-=======
     private Bitmap loadCachedBitmap(String path) {
         try {
             File f = cacheFileFor(path);
@@ -1286,7 +1261,61 @@ public class MainActivity extends Activity {
         return b.toString();
     }
 
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
+    private View photoFavoriteCard(AlbumPhoto ap) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(10), dp(10), dp(10), dp(10));
+        card.setBackground(roundedBox(cardBackground(), accentColor(), dp(18), dp(1)));
+        card.setClickable(true);
+        card.setFocusable(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) card.setElevation(dp(2));
+
+        ImageView thumb = new ImageView(this);
+        setImageFromPath(thumb, ap.photo.asset, R.drawable.sample_photo);
+        thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        LinearLayout.LayoutParams thumbParams = new LinearLayout.LayoutParams(dp(96), dp(76));
+        thumbParams.setMargins(0, 0, dp(12), 0);
+        card.addView(thumb, thumbParams);
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        TextView title = new TextView(this);
+        title.setText("♥ " + ap.item.title);
+        title.setTextColor(textColor());
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextSize(15);
+        title.setMaxLines(2);
+        texts.addView(title);
+        TextView meta = new TextView(this);
+        meta.setText("Fotoğraf " + (ap.photoIndex + 1) + "/" + Math.max(1, ap.item.photos.size()));
+        meta.setTextColor(accentColor());
+        meta.setTypeface(Typeface.DEFAULT_BOLD);
+        meta.setTextSize(13);
+        texts.addView(meta);
+        card.addView(texts, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        return card;
+    }
+
+    private void setHighlightedText(TextView view, String text, String query) {
+        if (!hasText(query)) {
+            view.setText(text);
+            return;
+        }
+        String q = query.trim().toLowerCase(new Locale("tr", "TR"));
+        String lower = (text == null ? "" : text).toLowerCase(new Locale("tr", "TR"));
+        int start = lower.indexOf(q);
+        if (start < 0) {
+            view.setText(text);
+            return;
+        }
+        SpannableString span = new SpannableString(text);
+        int end = Math.min(text.length(), start + q.length());
+        span.setSpan(new BackgroundColorSpan(darkTheme ? Color.rgb(115, 0, 0) : Color.rgb(255, 225, 225)), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        span.setSpan(new StyleSpan(Typeface.BOLD), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        view.setText(span);
+    }
+
     private View listCard(ArchiveItem item) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.HORIZONTAL);
@@ -1295,15 +1324,10 @@ public class MainActivity extends Activity {
         card.setBackground(roundedBox(cardBackground(), accentColor(), dp(16), dp(1)));
         card.setClickable(true);
         card.setFocusable(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) card.setElevation(dp(2));
 
         ImageView thumb = new ImageView(this);
-<<<<<<< HEAD
-        Bitmap bitmap = null;
-        if (item.photos.size() > 0) bitmap = loadAssetBitmap(item.photos.get(0).asset);
-        if (bitmap != null) thumb.setImageBitmap(bitmap);
-=======
         if (item.photos.size() > 0) setImageFromPath(thumb, item.photos.get(0).asset, R.drawable.sample_photo);
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
         else thumb.setImageResource(R.drawable.sample_photo);
         thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
         thumb.setBackgroundColor(Color.TRANSPARENT);
@@ -1316,11 +1340,7 @@ public class MainActivity extends Activity {
         texts.setGravity(Gravity.CENTER_VERTICAL);
 
         TextView title = new TextView(this);
-<<<<<<< HEAD
-        title.setText(item.title);
-=======
-        title.setText((isFavorite(item.id) ? "★ " : "") + item.title);
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
+        setHighlightedText(title, (isFavorite(item.id) ? "★ " : "") + item.title, currentQuery);
         title.setTextColor(textColor());
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setTextSize(16);
@@ -1341,11 +1361,7 @@ public class MainActivity extends Activity {
         }
 
         TextView snippet = new TextView(this);
-<<<<<<< HEAD
-        snippet.setText(makeSnippet(hasText(item.summary) ? item.summary : item.content, 125));
-=======
-        snippet.setText(makeSnippet(cleanReaderText(hasText(item.summary) ? item.summary : item.content), 125));
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
+        setHighlightedText(snippet, makeSnippet(cleanReaderText(hasText(item.summary) ? item.summary : item.content), 125), currentQuery);
         snippet.setTextColor(secondaryTextColor());
         snippet.setTextSize(13);
         snippet.setLineSpacing(0, 1.08f);
@@ -1386,6 +1402,7 @@ public class MainActivity extends Activity {
         view.setBackground(roundedBox(cardBackground(), accentColor(), dp(22), dp(2)));
         view.setClickable(true);
         view.setFocusable(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) view.setElevation(dp(4));
         return view;
     }
 
@@ -1428,7 +1445,8 @@ public class MainActivity extends Activity {
         button.setTextSize(16);
         button.setTypeface(Typeface.DEFAULT_BOLD);
         button.setTextColor(Color.WHITE);
-        button.setBackground(roundedBox(accentColor(), accentColor(), dp(18), 0));
+        button.setBackground(roundedBox(accentColor(), Color.rgb(110, 0, 0), dp(22), dp(1)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) button.setElevation(dp(3));
         return button;
     }
 
@@ -1439,7 +1457,8 @@ public class MainActivity extends Activity {
         button.setTextSize(14);
         button.setTypeface(Typeface.DEFAULT_BOLD);
         button.setTextColor(Color.WHITE);
-        button.setBackground(roundedBox(accentColor(), accentColor(), dp(18), 0));
+        button.setBackground(roundedBox(accentColor(), Color.rgb(110, 0, 0), dp(22), dp(1)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) button.setElevation(dp(3));
         return button;
     }
 
@@ -1498,10 +1517,8 @@ public class MainActivity extends Activity {
     private int cardBackground() { return darkTheme ? Color.rgb(45, 31, 31) : Color.WHITE; }
     private int textColor() { return darkTheme ? Color.WHITE : Color.rgb(28, 22, 22); }
     private int secondaryTextColor() { return darkTheme ? Color.rgb(224, 205, 205) : Color.rgb(92, 72, 72); }
-<<<<<<< HEAD
-=======
     private int subtleStrokeColor() { return darkTheme ? Color.rgb(90, 60, 60) : Color.rgb(235, 210, 210); }
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
+    private int softTableAltColor() { return darkTheme ? Color.rgb(54, 37, 37) : Color.rgb(255, 245, 245); }
 
     private void applyBars() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
@@ -1520,13 +1537,12 @@ public class MainActivity extends Activity {
         return s.substring(0, max).trim() + "…";
     }
 
-<<<<<<< HEAD
-=======
     private String cleanReaderText(String text) {
         if (!hasText(text)) return "";
         String s = text;
         s = s.replace("Önemli Duyuru: Bu sayfada verilen bilgiler tamamen\nbalkesarsivi.com\nadresinden alınmıştır. Bu bilgilerin ve sayfanın kaybolmaması adına yedekleme amaçlı paylaşılmıştır. Hiç bir menfaat söz konusu değildir. Ancak bu yazının telif hakkının\nbalkesarsivi.com\nadresine ait olduğunu bilmenizde fayda var.\n", "");
         s = s.replace("Önemli Duyuru: Bu sayfada verilen bilgiler tamamen balkesarsivi.com adresinden alınmıştır. Bu bilgilerin ve sayfanın kaybolmaması adına yedekleme amaçlı paylaşılmıştır. Hiç bir menfaat söz konusu değildir. Ancak bu yazının telif hakkının balkesarsivi.com adresine ait olduğunu bilmenizde fayda var.", "");
+        s = s.replaceAll("(?is)Önemli\\s+Duyuru:.*?bilmenizde\\s+fayda\\s+var\\.?", "");
         return s.trim();
     }
 
@@ -1548,6 +1564,89 @@ public class MainActivity extends Activity {
         return b.toString();
     }
 
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
     private int dp(int value) { return (int) (value * getResources().getDisplayMetrics().density + 0.5f); }
+
+    public class ZoomableImageView extends ImageView {
+        private final Matrix matrix = new Matrix();
+        private final ScaleGestureDetector detector;
+        private float userScale = 1f;
+        private float lastX = 0f;
+        private float lastY = 0f;
+        private boolean dragging = false;
+
+        public ZoomableImageView(Context context) {
+            super(context);
+            setScaleType(ImageView.ScaleType.MATRIX);
+            setBackgroundColor(Color.TRANSPARENT);
+            detector = new ScaleGestureDetector(context, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                @Override public boolean onScale(ScaleGestureDetector d) {
+                    float factor = d.getScaleFactor();
+                    float next = Math.max(1f, Math.min(4.5f, userScale * factor));
+                    factor = next / userScale;
+                    userScale = next;
+                    matrix.postScale(factor, factor, d.getFocusX(), d.getFocusY());
+                    setImageMatrix(matrix);
+                    return true;
+                }
+            });
+        }
+
+        @Override public void setImageBitmap(Bitmap bm) {
+            super.setImageBitmap(bm);
+            post(new Runnable() { @Override public void run() { resetBaseMatrix(); } });
+        }
+
+        @Override public void setImageResource(int resId) {
+            super.setImageResource(resId);
+            post(new Runnable() { @Override public void run() { resetBaseMatrix(); } });
+        }
+
+        @Override protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+            super.onSizeChanged(w, h, oldw, oldh);
+            resetBaseMatrix();
+        }
+
+        private void resetBaseMatrix() {
+            if (getDrawable() == null || getWidth() <= 0 || getHeight() <= 0) return;
+            int dw = getDrawable().getIntrinsicWidth();
+            int dh = getDrawable().getIntrinsicHeight();
+            if (dw <= 0 || dh <= 0) return;
+            float fit = Math.max((float) getWidth() / (float) dw, (float) getHeight() / (float) dh);
+            float dx = (getWidth() - dw * fit) / 2f;
+            float dy = (getHeight() - dh * fit) / 2f;
+            matrix.reset();
+            matrix.postScale(fit, fit);
+            matrix.postTranslate(dx, dy);
+            userScale = 1f;
+            setImageMatrix(matrix);
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent event) {
+            detector.onTouchEvent(event);
+            if (event.getPointerCount() == 1 && userScale > 1f) {
+                switch (event.getActionMasked()) {
+                    case MotionEvent.ACTION_DOWN:
+                        lastX = event.getX();
+                        lastY = event.getY();
+                        dragging = true;
+                        break;
+                    case MotionEvent.ACTION_MOVE:
+                        if (dragging) {
+                            float dx = event.getX() - lastX;
+                            float dy = event.getY() - lastY;
+                            matrix.postTranslate(dx, dy);
+                            setImageMatrix(matrix);
+                            lastX = event.getX();
+                            lastY = event.getY();
+                        }
+                        break;
+                    case MotionEvent.ACTION_UP:
+                    case MotionEvent.ACTION_CANCEL:
+                        dragging = false;
+                        break;
+                }
+            }
+            return true;
+        }
+    }
 }

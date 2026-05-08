@@ -9,8 +9,3 @@ local.properties
 *.tar.gz
 *.tar.zst
 .DS_Store
-<<<<<<< HEAD
-.idea/
-*.iml
-=======
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)

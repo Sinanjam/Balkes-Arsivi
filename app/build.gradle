@@ -10,13 +10,8 @@ android {
         applicationId 'com.sinanjam.arsiv'
         minSdk 23
         targetSdk 35
-<<<<<<< HEAD
-        versionCode 6
-        versionName '1.5-final-verili'
-=======
-        versionCode 7
-        versionName '1.6-github-hibrit'
->>>>>>> 6d4f6d5 (Add GitHub hybrid archive version 1.6)
+        versionCode 8
+        versionName '1.7-kirmizi-beyaz-hafiza'
     }
 
     signingConfigs {
@@ -31,9 +26,9 @@ android {
     buildTypes {
         debug {
             signingConfig signingConfigs.stableDebug
-            debuggable true
+            debuggable false
             applicationIdSuffix ''
-            versionNameSuffix '-debug'
+            versionNameSuffix ''
         }
         release {
             signingConfig signingConfigs.stableDebug
