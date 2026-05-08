@@ -1,0 +1,6 @@
+<resources>
+    <color name="balkes_red">#D50000</color>
+    <color name="balkes_dark_red">#8B0000</color>
+    <color name="balkes_white">#FFFFFF</color>
+    <color name="balkes_black">#090909</color>
+</resources>

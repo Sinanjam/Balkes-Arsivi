@@ -1,0 +1,50 @@
+Balkes Arşivi push-ready dosya listesi
+Tarih: 2026-05-08T17:17:13Z
+
+Toplam boyut: 65M
+Dosya sayısı: 706
+
+En büyük dosyalar:
+2.41 MB ./app/src/main/res/raw/splash.mp4
+0.54 MB ./app/src/main/assets/archive/archive_items.json
+0.50 MB ./app/src/main/assets/archive_data/media/images/0008-balikesirspor-1984-85-sezonu-arsivi/35ad0c3b4119ab412c.png
+0.49 MB ./app/src/main/assets/archive_data/media/images/0008-balikesirspor-1984-85-sezonu-arsivi/c88ab3e23ba7c9fddf.png
+0.49 MB ./app/src/main/res/drawable-nodpi/sample_photo.jpg
+0.49 MB ./app/src/main/res/drawable-nodpi/home_background.jpg
+0.41 MB ./app/src/main/assets/archive_data/media/images/0005-balikesirspor-1987-1988-sezonu-arsivi/c0d4f4bb439f5384ff.png
+0.41 MB ./app/src/main/res/drawable-nodpi/balkes_1966_banner.png
+0.32 MB ./app/src/main/assets/archive_data/manifest/media.jsonl
+0.32 MB ./VERI_KAYNAGI_YENI_CEKIM/manifest/media.jsonl
+0.27 MB ./app/src/main/assets/archive/all_archive_text.md
+0.27 MB ./VERI_KAYNAGI_YENI_CEKIM/all_archive_text.md
+0.26 MB ./app/src/main/assets/archive_data/media/images/0011-balikesirspor-1979-80-sezonu-arsivi/08c9174809104c2061.jpg
+0.25 MB ./app/src/main/res/drawable-nodpi/sinanjam_signature.png
+0.22 MB ./app/src/main/assets/archive_data/media/images/0010-balikesirspor-1982-83-sezonu-arsivi/8042e5dff55061d0c0.jpg
+0.22 MB ./app/src/main/assets/archive_data/media/images/0004-balikesirspor-1988-89-sezonu-arsivi/90dbe0fe6e947da603.jpg
+0.22 MB ./app/src/main/assets/archive_data/media/images/0002-balikesirspor-1978-79-sezonu-arsivi/7c26a95593df919ada.jpg
+0.20 MB ./app/src/main/assets/archive_data/media/images/0008-balikesirspor-1984-85-sezonu-arsivi/e70f8bc5a5bdf7d3ee.jpg
+0.19 MB ./app/src/main/assets/archive_data/media/images/0004-balikesirspor-1988-89-sezonu-arsivi/e172dd24a60c60e99d.jpg
+0.19 MB ./app/src/main/assets/archive_data/media/images/0004-balikesirspor-1988-89-sezonu-arsivi/8ac4bd7e43b5ce09e8.jpg
+0.18 MB ./app/src/main/assets/archive_data/media/images/0004-balikesirspor-1988-89-sezonu-arsivi/79fd8f9c711c65a0f9.jpg
+0.18 MB ./app/src/main/assets/archive_data/media/images/0007-balikesirspor-1985-1986-sezonu-arsivi/fd4c960c8f2bae4089.jpg
+0.18 MB ./app/src/main/assets/archive_data/media/images/0004-balikesirspor-1988-89-sezonu-arsivi/8692229ce80b0df450.jpg
+0.18 MB ./app/src/main/assets/archive_data/media/images/0009-balikesirspor-1983-84-sezonu-arsivi/f9e65ac14991c51049.jpg
+0.18 MB ./app/src/main/assets/archive_data/media/images/0008-balikesirspor-1984-85-sezonu-arsivi/1bf82911f05969b36e.jpg
+0.17 MB ./app/src/main/assets/archive_data/media/images/0010-balikesirspor-1982-83-sezonu-arsivi/007de382b4b1d1d0be.jpg
+0.17 MB ./app/src/main/assets/archive_data/media/images/0002-balikesirspor-1978-79-sezonu-arsivi/9d1c36dc7a6570b5a9.jpg
+0.17 MB ./app/src/main/assets/archive_data/media/images/0011-balikesirspor-1979-80-sezonu-arsivi/e0e66d696b49fb155d.jpg
+0.17 MB ./app/src/main/res/drawable-nodpi/archive_photo_58.jpg
+0.17 MB ./app/src/main/assets/archive_data/media/images/0004-balikesirspor-1988-89-sezonu-arsivi/4d59709eba05ba2956.jpg
+0.17 MB ./app/src/main/assets/archive_data/media/images/0009-balikesirspor-1983-84-sezonu-arsivi/000cfb5612531d94c9.jpg
+0.17 MB ./app/src/main/assets/archive_data/media/images/0012-balikesirspor-1972-73-sezonu-arsivi/fb0bf9868294f2e5d2.jpg
+0.17 MB ./app/src/main/assets/archive_data/media/images/0008-balikesirspor-1984-85-sezonu-arsivi/b489745fdea6fb95a4.jpg
+0.17 MB ./app/src/main/res/drawable-nodpi/archive_photo_02.jpg
+0.17 MB ./app/src/main/assets/archive_data/media/images/0007-balikesirspor-1985-1986-sezonu-arsivi/273724dc525ddd2aba.jpg
+0.16 MB ./app/src/main/assets/archive_data/media/images/0010-balikesirspor-1982-83-sezonu-arsivi/fdd16fedb8cb39697d.jpg
+0.16 MB ./app/src/main/res/drawable-nodpi/archive_photo_01.jpg
+0.16 MB ./app/src/main/assets/archive_data/media/images/0010-balikesirspor-1982-83-sezonu-arsivi/5929c7a50acac25b75.jpg
+0.16 MB ./app/src/main/res/drawable-nodpi/archive_photo_11.jpg
+0.16 MB ./app/src/main/res/drawable-nodpi/archive_photo_10.jpg
+
+100 MB üstü dosya kontrolü:
+Yok
