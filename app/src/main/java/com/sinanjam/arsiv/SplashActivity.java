@@ -19,6 +19,7 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
@@ -103,7 +104,7 @@ public class SplashActivity extends Activity {
                     JSONObject obj = new JSONObject(json);
                     String tag = obj.optString("tag_name", "");
                     String name = obj.optString("name", "");
-                    String url = obj.optString("html_url", LATEST_RELEASE_PAGE);
+                    String url = latestApkUrl(obj);
                     if (hasText(url) && !releaseMatchesCurrent(tag, name)) {
                         openLatestRelease(url);
                     }
@@ -142,6 +143,23 @@ public class SplashActivity extends Activity {
                 .replaceAll("-+", "-")
                 .replaceAll("^-|-$", "")
                 .trim();
+    }
+
+
+    private String latestApkUrl(JSONObject obj) {
+        try {
+            JSONArray assets = obj.optJSONArray("assets");
+            if (assets != null) {
+                for (int i = 0; i < assets.length(); i++) {
+                    JSONObject asset = assets.optJSONObject(i);
+                    if (asset == null) continue;
+                    String assetName = asset.optString("name", "").toLowerCase(Locale.US);
+                    String downloadUrl = asset.optString("browser_download_url", "");
+                    if (assetName.endsWith(".apk") && hasText(downloadUrl)) return downloadUrl;
+                }
+            }
+        } catch (Exception ignored) { }
+        return obj.optString("html_url", LATEST_RELEASE_PAGE);
     }
 
     private void openLatestRelease(final String url) {
