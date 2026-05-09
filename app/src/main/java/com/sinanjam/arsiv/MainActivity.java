@@ -72,6 +72,8 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends Activity {
     private static final String PREFS = "balkes_arsivi_prefs";
@@ -91,7 +93,10 @@ public class MainActivity extends Activity {
     private static final String GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Sinanjam/Balkes-Arsivi/main/app/src/main/assets/";
     private static final String REMOTE_ARCHIVE_URL = GITHUB_RAW_BASE + "archive/archive_items.json";
     private static final String APP_VERSION_NAME = "2.0 Final";
+    private static final int MAX_INLINE_TABLES = 8;
+    private static final int MAX_LIST_ITEMS = 45;
 
+    private final ExecutorService imageExecutor = Executors.newFixedThreadPool(2);
     private final ArrayList<ArchiveItem> archiveItems = new ArrayList<ArchiveItem>();
     private final ArrayList<AlbumPhoto> albumPhotos = new ArrayList<AlbumPhoto>();
     private SharedPreferences prefs;
@@ -153,9 +158,20 @@ public class MainActivity extends Activity {
         darkTheme = prefs.getBoolean(KEY_DARK, false);
         textSizeSp = prefs.getInt(KEY_TEXT_SIZE, 21);
         createNotificationChannel();
-        loadArchiveItems();
-        showHome();
-        handler.post(new Runnable() { @Override public void run() { showReleaseNotesIfNeeded(); } });
+        showLoadingPage("Balkes Arşivi yükleniyor", "Yerel arşiv hazırlanıyor...");
+        new Thread(new Runnable() {
+            @Override public void run() {
+                loadArchiveItems();
+                handler.post(new Runnable() {
+                    @Override public void run() {
+                        showHome();
+                        handler.postDelayed(new Runnable() {
+                            @Override public void run() { showReleaseNotesIfNeeded(); }
+                        }, 350);
+                    }
+                });
+            }
+        }).start();
         // Güncelleme yönlendirmesi SplashActivity içinde GitHub latest release kontrolüyle yapılır.
     }
 
@@ -511,13 +527,17 @@ public class MainActivity extends Activity {
             results.addView(emptyState(hasText(currentQuery) ? "Sonuç bulunamadı" : "Arşiv kaydı bulunamadı", hasText(currentQuery) ? "Farklı bir sezon, futbolcu veya skor deneyin." : "Arşiv verisi bu pakette yerel olarak bulunur."));
             return;
         }
-        TextView count = descriptionText(filtered.size() + " sonuç bulundu");
+        int shown = Math.min(filtered.size(), MAX_LIST_ITEMS);
+        TextView count = descriptionText(filtered.size() + " sonuç bulundu" + (filtered.size() > shown ? " • ilk " + shown + " kayıt gösteriliyor" : ""));
         results.addView(count);
-        for (int i = 0; i < filtered.size(); i++) {
+        for (int i = 0; i < shown; i++) {
             final ArchiveItem item = filtered.get(i);
             View row = listCard(item);
             row.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(item, 0); } });
             results.addView(row, listCardParams());
+        }
+        if (filtered.size() > shown) {
+            results.addView(descriptionText("Daha fazla kayıt görmek için arama kutusuna sezon, takım, tarih veya kelime yaz."));
         }
     }
 
@@ -641,6 +661,7 @@ public class MainActivity extends Activity {
 
         ArrayList<String> paragraphs = articleParagraphs(item);
         ArrayList<ArticleTable> tables = articleTables(item.tables);
+        int maxInlineTables = Math.min(tables.size(), MAX_INLINE_TABLES);
         int photoCount = item.photos.size();
         int photoLimit = Math.min(photoCount, Math.max(1, Math.min(8, Math.max(1, paragraphs.size() / 2 + 1))));
         int photoIndex = 0;
@@ -664,7 +685,7 @@ public class MainActivity extends Activity {
             }
 
             // İlk tablo, giriş ve görselden sonra gelsin; sezon sayfalarında tablo metni bölmeden okunur.
-            if (i == 1 && tableIndex < tables.size()) {
+            if (i == 1 && tableIndex < maxInlineTables) {
                 addArticleTableBlock(page, tables.get(tableIndex));
                 tableIndex++;
             }
@@ -674,7 +695,7 @@ public class MainActivity extends Activity {
                 addArticlePhotoBlock(page, item, photoIndex, photoCount);
                 photoIndex++;
             }
-            if (i > 2 && tableIndex < tables.size() && ((i + 1) % 4 == 0)) {
+            if (i > 2 && tableIndex < maxInlineTables && ((i + 1) % 4 == 0)) {
                 addArticleTableBlock(page, tables.get(tableIndex));
                 tableIndex++;
             }
@@ -690,10 +711,11 @@ public class MainActivity extends Activity {
             if (photoCount > photoLimit) addMorePhotosNotice(page, item, photoLimit, photoCount);
         }
 
-        while (tableIndex < tables.size()) {
+        while (tableIndex < maxInlineTables) {
             addArticleTableBlock(page, tables.get(tableIndex));
             tableIndex++;
         }
+        if (tables.size() > maxInlineTables) addMoreTablesNotice(page, item, maxInlineTables, tables.size());
     }
 
     private void addParagraphBlock(LinearLayout page, String text, boolean lead) {
@@ -767,6 +789,21 @@ public class MainActivity extends Activity {
         page.addView(more, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         Button open = pillButton("Tüm Fotoğrafları Aç");
         open.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showPhotoAlbum(albumIndexFor(item, 0)); } });
+        LinearLayout.LayoutParams op = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(46));
+        op.setMargins(0, dp(4), 0, dp(8));
+        page.addView(open, op);
+    }
+
+    private void addMoreTablesNotice(LinearLayout page, final ArchiveItem item, int shown, int total) {
+        TextView more = new TextView(this);
+        more.setText("Bu sayfada donmayı önlemek için ilk " + shown + " tablo metin akışına yerleştirildi. Tüm " + total + " tabloyu ayrı tablo ekranında açabilirsin.");
+        more.setTextColor(secondaryTextColor());
+        more.setTextSize(13);
+        more.setGravity(Gravity.CENTER);
+        more.setPadding(dp(12), dp(10), dp(12), dp(4));
+        page.addView(more, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        Button open = pillButton("Tüm Tabloları Aç");
+        open.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showTableIndex(item); } });
         LinearLayout.LayoutParams op = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(46));
         op.setMargins(0, dp(4), 0, dp(8));
         page.addView(open, op);
@@ -1203,9 +1240,11 @@ public class MainActivity extends Activity {
         ArrayList<ArticleTable> tables = articleTables(markdown);
         if (tables.size() == 0) return;
         root.addView(sectionSubHeader("Tablolar"));
-        for (int i = 0; i < tables.size(); i++) {
+        int max = Math.min(tables.size(), MAX_INLINE_TABLES);
+        for (int i = 0; i < max; i++) {
             addArticleTableBlock(root, tables.get(i));
         }
+        if (tables.size() > max) addMoreTablesNotice(root, currentItem, max, tables.size());
     }
 
     private ArrayList<String> parseMarkdownRow(String line) {
@@ -1369,6 +1408,35 @@ public class MainActivity extends Activity {
             table.addView(row, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         }
         return table;
+    }
+
+    private void showTableIndex(final ArchiveItem item) {
+        if (item == null) return;
+        screen = "table_index";
+        currentItem = item;
+        applyBars();
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        scrollView.addView(root);
+        Button back = wideButton("← Yazıya Dön");
+        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(item, currentPhotoIndex); } });
+        root.addView(back, compactButtonParams());
+        root.addView(sectionHeader("Tablolar"));
+        root.addView(descriptionText(item.title + " içindeki tüm tablolar. Donmayı önlemek için tablolar tek tek açılır."));
+        final ArrayList<ArticleTable> tables = articleTables(item.tables);
+        if (tables.size() == 0) {
+            root.addView(emptyState("Tablo bulunamadı", "Bu yazıya bağlı tablo verisi yok."));
+        } else {
+            for (int i = 0; i < tables.size(); i++) {
+                final ArticleTable table = tables.get(i);
+                Button btn = wideButton((i + 1) + ". " + (hasText(table.title) ? table.title : "Tablo"));
+                btn.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showTableFullscreen(hasText(table.title) ? table.title : "Tablo", table.rows); } });
+                root.addView(btn, compactButtonParams());
+            }
+        }
+        setContentView(scrollView);
     }
 
     private void showTableFullscreen(final String title, ArrayList<ArrayList<String>> rows) {
@@ -2009,32 +2077,26 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void setImageFromPath(final ImageView image, final String path, int fallback) {
-        image.setTag(path == null ? "" : path);
-        Bitmap bitmap = loadAssetBitmap(path);
-        if (bitmap != null) {
-            image.setImageBitmap(bitmap);
-            return;
-        }
-        bitmap = loadCachedBitmap(path);
-        if (bitmap != null) {
-            image.setImageBitmap(bitmap);
-            return;
-        }
+    private void setImageFromPath(final ImageView image, final String path, final int fallback) {
+        final String safePath = path == null ? "" : path;
+        image.setTag(safePath);
         image.setImageResource(fallback);
-        if (!hasText(path)) return;
-        new Thread(new Runnable() {
+        if (!hasText(safePath)) return;
+        imageExecutor.execute(new Runnable() {
             @Override public void run() {
-                final Bitmap downloaded = downloadAndCacheBitmap(path);
-                if (downloaded == null) return;
+                Bitmap bitmap = loadAssetBitmap(safePath);
+                if (bitmap == null) bitmap = loadCachedBitmap(safePath);
+                if (bitmap == null) bitmap = downloadAndCacheBitmap(safePath);
+                final Bitmap finalBitmap = bitmap;
+                if (finalBitmap == null) return;
                 handler.post(new Runnable() {
                     @Override public void run() {
                         Object tag = image.getTag();
-                        if (tag != null && tag.toString().equals(path)) image.setImageBitmap(downloaded);
+                        if (tag != null && tag.toString().equals(safePath)) image.setImageBitmap(finalBitmap);
                     }
                 });
             }
-        }).start();
+        });
     }
 
     private Bitmap downloadAndCacheBitmap(String path) {
