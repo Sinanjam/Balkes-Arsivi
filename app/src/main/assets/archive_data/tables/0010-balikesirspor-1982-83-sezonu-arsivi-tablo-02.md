@@ -1,0 +1,34 @@
+| 1982-83 Sezonunda Oynadı ğ ımız Maçlar |  |  |  |  |  |
+| --- | --- | --- | --- | --- | --- |
+| Tarih | İlk Yarı Maçlarımız |  |  |  |  |
+| 12.09.1982 | Balıkesirspor | 1 | 0 | Göztepe |  |
+| 19.09.1982 | Aydınspor | 6 | 2 | Balıkesirspor |  |
+| 26.09.1982 | Balıkesirspor | 3 | 0 | Çanakkalespor |  |
+| 03.10.1982 | Usakspor | 2 | 0 | Balıkesirspor |  |
+| 10.10.1982 | Muglaspor | 1 | 1 | Balıkesirspor |  |
+| 17.10.1982 | Balıkesirspor | 1 | 1 | Tirespor |  |
+| 24.10.1982 | Balıkesirspor | 2 | 1 | Burdurspor |  |
+| 31.10.1982 | Izmirspor | 1 | 0 | Balıkesirspor |  |
+| 21.11.1982 | Balıkesirspor | 0 | 1 | Ispartaspor |  |
+| 28.11.1982 | Yesilova | 1 | 1 | Balıkesirspor |  |
+| 05.12.1982 | Denizlispor | 2 | 0 | Balıkesirspor |  |
+| 19.12.1982 | Balıkesirspor | 2 | 2 | Bandırmaspor |  |
+| 26.12.1982 | Manisaspor | 1 | 1 | Balıkesirspor |  |
+| 09.01.1983 | Balıkesirspor | 1 | 0 | Karsıyaka |  |
+| 16.01.1983 | Altınordu | 4 | 0 | Balıkesirspor |  |
+|  | İ kinci Yarı Maçlarımız |  |  |  |  |
+| 20.02.1983 | Göztepe | 0 | 0 | Balıkesirspor |  |
+| 30.03.1983 | Balıkesirspor | 2 | 1 | Aydınspor |  |
+| 06.03.1983 | Çanakkalespor | 0 | 0 | Balıkesirspor |  |
+| 13.03.1983 | Balıkesirspor | 1 | 1 | Usakspor |  |
+| 20.03.1983 | Balıkesirspor | 1 | 0 | Muglaspor |  |
+| 27.03.1983 | Tirespor | 0 | 0 | Balıkesirspor |  |
+| 03.04.1983 | Burdurspor | 1 | 0 | Balıkesirspor |  |
+| 10.04.1983 | Balıkesirspor | 0 | 3 | Izmirspor |  |
+| 17.04.1983 | Ispartaspor | 3 | 2 | Balıkesirspor |  |
+| 24.04.1983 | Balıkesirspor | 2 | 0 | Yesilova |  |
+| 01.05.1983 | Balıkesirspor | 0 | 0 | Denizlispor |  |
+| 08.05.1983 | Bandırmaspor | 1 | 1 | Balıkesirspor |  |
+| 15.05.1983 | Balıkesirspor | 3 | 0 | Manisaspor |  |
+| 21.05.1983 | Karsıyaka | 2 | 0 | Balıkesirspor |  |
+| 29.05.1983 | Balıkesirspor | 1 | 0 | Altınordu |  |

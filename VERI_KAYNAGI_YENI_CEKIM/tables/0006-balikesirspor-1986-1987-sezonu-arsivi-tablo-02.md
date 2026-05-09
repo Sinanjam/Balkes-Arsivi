@@ -1,0 +1,34 @@
+| 1986-87 Sezonunda Oynadığımız Maçlar |  |  |  |  |  |  |
+| --- | --- | --- | --- | --- | --- | --- |
+| Tarih | Ilk Yarı Maçlarımız |  |  |  |  |  |
+| 14.09.1986 | Balıkesirspor | 1 | 1 | Soma Sotesspor |  |  |
+| 21.09.1986 | U ş akspor | 1 | 1 | Balıkesirspor |  |  |
+| 28.09.1986 | Balıkesirspor | 3 | 0 | Karacabeyspor |  | (Hükmen) |
+| 05.10.1986 | Gönenspor | 0 | 0 | Balıkesirspor |  |  |
+| 12.10.1986 | Balıkesirspor | 2 | 1 | Bergamaspor |  |  |
+| 19.10.1986 | Balıkesirspor | 1 | 0 | Bursa Kültür |  |  |
+| 26.10.1986 | Ayvalıkgücü | 2 | 1 | Balıkesirspor |  |  |
+| 02.11.1986 | Balıkesirspor | 2 | 0 | Bigaspor |  |  |
+| 08.11.1986 | Erdekspor | 1 | 0 | Balıkesirspor |  |  |
+| 16.11.1986 | Balıkesirspor | 1 | 0 | Akhisarspor |  |  |
+| 23.11.1986 | Edremitspor | 1 | 0 | Balıkesirspor |  |  |
+| 30.11.1986 | Balıkesirspor | 2 | 0 | Çanspor |  |  |
+| 06.12.1986 | Bursa Amatör | 0 | 0 | Balıkesirspor |  |  |
+| 14.12.1986 | Alas ehirspor | 3 | 1 | Balıkesirspor |  |  |
+| 21.12.1986 | Balıkesirspor | 1 | 0 | Burhaniyespor |  |  |
+|  | Ikıncı Yarı Maçlarımız |  |  |  |  |  |
+| 08.02.1987 | Soma Sotesspor | 2 | 0 | Balıkesirspor |  |  |
+| 15.02.1987 | Balıkesirspor | 2 | 3 | U ş akspor |  |  |
+| 22.02.1987 | Karacabeyspor | 1 | 0 | Balıkesirspor |  |  |
+| 01.03.1987 | Balıkesirspor | 0 | 0 | Gönenspor |  |  |
+| 15.03.1987 | Bergamaspor | 1 | 0 | Balıkesirspor |  |  |
+| 22.03.1987 | Bursa Kültür | 1 | 0 | Balıkesirspor |  |  |
+| 29.03.1987 | Balıkesirspor | 2 | 2 | Ayvalıkgücü |  |  |
+| 05.04.1987 | Bigaspor | 1 | 1 | Balıkesirspor |  |  |
+| 12.04.1987 | Balıkesirspor | 1 | 0 | Erdekspor |  |  |
+| 19.04.1987 | Akhisarspor | 2 | 1 | Balıkesirspor |  |  |
+| 26.04.1987 | Balıkesirspor | 2 | 0 | Edremitspor |  |  |
+| 03.05.1987 | Çanspor | 2 | 0 | Balıkesirspor |  |  |
+| 10.05.1987 | Balıkesirspor | 0 | 0 | Bursa Amatör |  |  |
+| 17.05.1987 | Balıkesirspor | 3 | 1 | Alas ehirspor |  |  |
+| 24.05.1987 | Burhaniyespor | 4 | 1 | Balıkesirspor |  |  |

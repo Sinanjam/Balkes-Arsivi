@@ -1,0 +1,19 @@
+|  | 3.Lig 7.Grup | O | G | B | M | A | Y | P |  |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Bursaspor Amatör | 32 | 19 | 9 | 4 | 56 | 22 | 66 | Sampiyon |
+| 2 | Erdemir Ereglispor | 32 | 17 | 12 | 3 | 50 | 21 | 63 |  |
+| 3 | Bigaspor | 32 | 18 | 6 | 8 | 32 | 24 | 60 |  |
+| 4 | Bandırmaspor | 32 | 14 | 10 | 8 | 42 | 30 | 52 |  |
+| 5 | Sakarya Karadeniz | 32 | 13 | 11 | 8 | 29 | 24 | 50 |  |
+| 6 | Edremitspor | 32 | 12 | 11 | 9 | 41 | 31 | 47 |  |
+| 7 | Kilimlispor | 32 | 12 | 9 | 11 | 39 | 38 | 45 |  |
+| 8 | Çanakkalespor | 32 | 9 | 12 | 11 | 42 | 40 | 39 |  |
+| 9 | Akyazıspor | 32 | 9 | 11 | 12 | 28 | 26 | 38 |  |
+| 10 | Balıkesirspor | 32 | 10 | 8 | 14 | 32 | 38 | 38 |  |
+| 11 | Burhaniyespor | 32 | 9 | 11 | 12 | 25 | 31 | 38 |  |
+| 12 | Bozüyükspor | 32 | 7 | 16 | 9 | 41 | 38 | 37 |  |
+| 13 | Çanspor | 32 | 11 | 4 | 17 | 28 | 38 | 37 |  |
+| 14 | M.Kemalpasaspor | 32 | 9 | 9 | 14 | 25 | 37 | 36 |  |
+| 15 | Iznikspor | 32 | 8 | 11 | 13 | 31 | 44 | 35 |  |
+| 16 | Erdekspor | 32 | 7 | 8 | 17 | 25 | 58 | 29 | Amatör |
+| 17 | Eskisehir Demirspor | 32 | 5 | 8 | 19 | 31 | 57 | 23 | Amatör |

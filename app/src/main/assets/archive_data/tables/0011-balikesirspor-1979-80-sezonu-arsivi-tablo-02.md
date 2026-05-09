@@ -1,0 +1,34 @@
+| 1979-80 Sezonunda Oynadıgımız Maçlar |  |  |  |  |  |  |
+| --- | --- | --- | --- | --- | --- | --- |
+| Tarih | İ lk Yarı Maçlarımız |  |  |  |  |  |
+| 09.09.1979 | Balıkesirspor | 1 | 0 | Düzcespor |  | Tarafsız Saha |
+| 16.09.1979 | Sarıyer | 5 | 0 | Balıkesirspor |  |  |
+| 23.09.1979 | Bandırmaspor | 1 | 0 | Balıkesirspor |  |  |
+| 30.09.1979 | Aydınspor | 3 | 0 | Balıkesirspor |  |  |
+| 06.10.1979 | Ispartaspor | 1 | 1 | Balıkesirspor |  |  |
+| 21.10.1979 | Kocaelispor | 5 | 0 | Balıkesirspor |  |  |
+| 28.10.1979 | Tekirdağspor | 1 | 0 | Balıkesirspor |  |  |
+| 04.11.1979 | Balıkesirspor | 3 | 0 | Tirespor |  |  |
+| 18.11.1979 | Balıkesirspor | 0 | 0 | Altınordu |  |  |
+| 25.11.1979 | Edirnespor | 1 | 0 | Balıkesirspor |  |  |
+| 02.12.1979 | Balıkesirspor | 1 | 0 | Sakaryaspor |  |  |
+| 08.12.1979 | Denizlispor | 2 | 1 | Balıkesirspor |  | Tarafsız Saha |
+| 16.12.1979 | Balıkesirspor | 2 | 2 | Antalyaspor |  |  |
+| 23.12.1979 | Lüleburgazspor | 1 | 1 | Balıkesirspor |  |  |
+| 30.12.1979 | Balıkesirspor | 2 | 1 | Vefa |  |  |
+|  | İ kinci Yarı Maçlarımız |  |  |  |  |  |
+| 09.02.1980 | Düzcespor | 3 | 0 | Balıkesirspor |  | Tarafsız Saha |
+| 17.02.1980 | Balıkesirspor | 3 | 0 | Sarıyer |  |  |
+| 24.02.1980 | Balıkesirspor | 1 | 1 | Bandırmaspor |  |  |
+| 02.03.1980 | Balıkesirspor | 0 | 0 | Aydınspor |  |  |
+| 09.03.1980 | Balıkesirspor | 4 | 0 | Ispartaspor |  |  |
+| 16.03.1980 | Balıkesirspor | 0 | 0 | Kocaelispor |  |  |
+| 23.03.1980 | Balıkesirspor | 2 | 1 | Tekirdağspor |  |  |
+| 30.03.1980 | Tirespor | 1 | 2 | Balıkesirspor |  |  |
+| 05.04.1980 | Altınordu | 1 | 0 | Balıkesirspor |  |  |
+| 13.04.1980 | Balıkesirspor | 1 | 0 | Edirnespor |  |  |
+| 19.04.1980 | Sakaryaspor | 3 | 1 | Balıkesirspor |  |  |
+| 27.04.1980 | Balıkesirspor | 1 | 0 | Denizlispor |  | Tarafsız Saha |
+| 04.05.1980 | Antalyaspor | 2 | 0 | Balıkesirspor |  |  |
+| 11.05.1980 | Balıkesirspor | 1 | 0 | Lüleburgazspor |  |  |
+| 18.05.1980 | Vefa | 3 | 1 | Balıkesirspor |  |  |

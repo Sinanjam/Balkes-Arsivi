@@ -1,0 +1,44 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.sinanjam.arsiv'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.sinanjam.arsiv'
+        minSdk 23
+        targetSdk 35
+        versionCode 10
+        versionName '1.8.5-fix-surumu'
+    }
+
+    signingConfigs {
+        stableDebug {
+            storeFile file('../keystore/balkes-arsivi-stable.jks')
+            storePassword 'balkesarsivi'
+            keyAlias 'balkesarsivi'
+            keyPassword 'balkesarsivi'
+        }
+    }
+
+    buildTypes {
+        debug {
+            signingConfig signingConfigs.stableDebug
+            debuggable false
+            applicationIdSuffix ''
+            versionNameSuffix ''
+        }
+        release {
+            signingConfig signingConfigs.stableDebug
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+
+dependencies {
+    implementation 'androidx.core:core:1.13.1'
+}
