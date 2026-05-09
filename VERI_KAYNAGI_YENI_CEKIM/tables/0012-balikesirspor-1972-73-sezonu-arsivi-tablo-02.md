@@ -1,0 +1,34 @@
+| 1972-73 Sezonunda Oynadı ğ ımız Maçlar |  |  |  |  |
+| --- | --- | --- | --- | --- |
+|  | İ lk Yarı Maçlarımız |  |  |  |
+| 24.09.1972 | Beykozspor | Balıkesirspor | 0-0 |  |
+| 01.10.1972 | Balıkesirspor | Zonguldakspor | 1-0 |  |
+| 08.10.1972 | Sivasspor | Balıkesirspor | 1-0 |  |
+| 15.10.1972 | Adana Demir | Balıkesirspor | 0-0 |  |
+| 22.10.1972 | Balıkesirspor | Lüleburgazspor | 3-1 |  |
+| 29.10.1972 | Balıkesirspor | U ş akspor | 5-1 |  |
+| 05.11.1972 | Kar ş ıyaka | Balıkesirspor | 0-0 |  |
+| 12.11.1972 | Kocaelispor | Balıkesirspor | 1-0 |  |
+| 26.11.1972 | Balıkesirspor | İ skenderunspor | 1-0 |  |
+| 10.12.1972 | Balıkesirspor | Feriköy | 0-0 |  |
+| 24.12.1972 | Ankara Demir | Balıkesirspor | 0-0 |  |
+| 07.01.1973 | Balıkesirspor | Altınordu | 1-0 |  |
+| 14.01.1973 | Aydınspor | Balıkesirspor | 1-1 |  |
+| 20.01.1973 | Balıkesirspor | Konya İ .Y. | 2-0 |  |
+| 28.01.1973 | Kütahyaspor | Balıkesirspor | 1-0 |  |
+|  | İ kinci Yarı Maçlarımız |  |  |  |
+| 18.02.1973 | Balıkesirspor | Beykozspor | 0-0 |  |
+| 25.02.1973 | Zonguldakspor | Balıkesirspor | 2-1 |  |
+| 04.03.1973 | Balıkesirspor | Sivasspor | 3-1 |  |
+| 11.03.1973 | Balıkesirspor | Adana Demir | 1-1 |  |
+| 18.03.1973 | Lüleburgazspor | Balıkesirspor | 1-0 |  |
+| 25.03.1973 | U ş akspor | Balıkesirspor | 2-1 |  |
+| 01.04.1973 | Balıkesirspor | Kar ş ıyaka | 1-0 |  |
+| 08.04.1973 | Balıkesirspor | Kocaelispor | 1-0 |  |
+| 15.04.1973 | İ skenderunspor | Balıkesirspor | 2-1 |  |
+| 22.04.1973 | Feriköy | Balıkesirspor | 1-0 |  |
+| 29.04.1973 | Balıkesirspor | Ankara Demir | 1-1 |  |
+| 06.05.1973 | Altınordu | Balıkesirspor | 1-0 |  |
+| 12.05.1973 | Balıkesirspor | Aydınspor | 3-2 |  |
+| 20.05.1973 | Konya İ .Y. | Balıkesirspor | 2-1 |  |
+| 27.05.1973 | Balıkesirspor | Kütahyaspor | 1-0 |  |

@@ -1,0 +1,1 @@
+# Taslak sürüm: küçültme kapalı.

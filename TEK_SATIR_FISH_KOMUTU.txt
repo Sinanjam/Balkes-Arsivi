@@ -1,0 +1,1 @@
+cd ~/Downloads/BalkesArsivi_1_9_Kayip_Sayfalar; and chmod +x BUILD_AND_PUSH_1_9.fish BUILD_AND_PUSH_1_9_FIXED.sh; and ./BUILD_AND_PUSH_1_9.fish

@@ -1,0 +1,36 @@
+| 1983-84 Sezonunda Oynadığımız Maçlar |  |  |  |  |  |
+| --- | --- | --- | --- | --- | --- |
+| Tarih | Ilk Yarı Maçlarımız |  |  |  |  |
+| 21.08.1983 | Balıkesirspor | 1 | 2 | Altınordu |  |
+| 27.08.1983 | Altay | 2 | 0 | Balıkesirspor |  |
+| 04.09.1983 | Balıkesirspor | 2 | 0 | Sekerspor |  |
+| 18.09.1983 | Alibeyköy | 3 | 3 | Balıkesirspor |  |
+| 25.09.1983 | Balıkesirspor | 1 | 0 | Kütahyaspor |  |
+| 02.10.1983 | Burdurspor | 0 | 0 | Balıkesirspor |  |
+| 09.10.1983 | Balıkesirspor | 1 | 2 | Konyaspor |  |
+| 16.10.1983 | Aydınspor | 0 | 0 | Balıkesirspor |  |
+| 23.10.1983 | Balıkesirspor | 0 | 0 | Muglaspor |  |
+| 13.11.1983 | Balıkesirspor | 1 | 2 | Mersin I.Y. |  |
+| 20.11.1983 | Y.Afyonspor | 1 | 0 | Balıkesirspor |  |
+| 27.11.1983 | Balıkesirspor | 1 | 1 | Ispartaspor |  |
+| 03.12.1983 | Vefa | 3 | 2 | Balıkesirspor |  |
+| 11.12.1983 | Balıkesirspor | 0 | 0 | Anadolu |  |
+| 17.12.1983 | PTT | 1 | 0 | Balıkesirspor |  |
+| 25.12.1983 | Balıkesirspor | 2 | 1 | Izmirspor |  |
+|  | Ikıncı Yarı Maçlarımız |  |  |  |  |
+| 29.01.1984 | Altınordu | 2 | 0 | Balıkesirspor |  |
+| 05.02.1984 | Balıkesirspor | 0 | 2 | Altay |  |
+| 11.02.1984 | Sekerspor | 3 | 0 | Balıkesirspor |  |
+| 19.02.1984 | Balıkesirspor | 0 | 1 | Alibeyköy |  |
+| 26.02.1984 | Kütahyaspor | 1 | 2 | Balıkesirspor |  |
+| 04.03.1984 | Balıkesirspor | 1 | 0 | Burdurspor |  |
+| 11.03.1984 | Konyaspor | 2 | 2 | Balıkesirspor |  |
+| 18.03.1984 | Balıkesirspor | 1 | 0 | Aydınspor |  |
+| 25.03.1984 | Muglaspor | 5 | 1 | Balıkesirspor |  |
+| 08.04.1984 | Mersin I.Y. | 1 | 0 | Balıkesirspor |  |
+| 15.04.1984 | Balıkesirspor | 1 | 0 | Y.Afyonspor |  |
+| 22.04.1984 | Ispartaspor | 0 | 1 | Balıkesirspor |  |
+| 29.04.1984 | Balıkesirspor | 5 | 2 | Vefa |  |
+| 06.05.1984 | Anadolu | 2 | 0 | Balıkesirspor |  |
+| 13.05.1984 | Balıkesirspor | 3 | 0 | PTT |  |
+| 20.05.1984 | Izmirspor | 3 | 1 | Balıkesirspor |  |

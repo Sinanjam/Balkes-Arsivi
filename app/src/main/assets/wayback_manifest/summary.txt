@@ -1,0 +1,7 @@
+itemsAdded: 60
+itemsMerged: 9
+rawPages: 122
+uniqueMediaCopied: 1309
+duplicatePhotosDropped: 535
+unusedMediaDeleted: 301
+uniqueWaybackPhotosInApp: 1008
