@@ -9,3 +9,5 @@ local.properties
 *.tar.gz
 *.tar.zst
 .DS_Store
+.idea/
+*.iml

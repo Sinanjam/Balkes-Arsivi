@@ -1,44 +1,26 @@
-# Balkes Arşivi Android
+# Balkes Arşivi 2.0 Final
 
-**Sürüm:** 1.7 — **Kırmızı Beyaz Hafıza**
+Bu paket, Balkes Arşivi Android uygulamasının halka açılacak final zip hazırlığıdır.
 
-Balıkesirspor arşiv metinleri, fotoğrafları ve tabloları için yerel + GitHub hibrit çalışan Android uygulaması.
+## Ana yapı
 
-## 1.7 özeti
+- Ana ekran: **Balkes Arşivi**, **Favoriler**, **Uygulama Hakkında**.
+- Kayıp Sayfalar ayrı bölüm değildir; tüm içerikler düz **Balkes Arşivi** içinde bulunur.
+- Metin ekranları PDF/dergi tarzı akar; görseller metinlerin arasında gösterilir.
+- Puan tabloları ve maç skorları mobil okunabilir kart/tablo yapısındadır.
+- Eksik fotoğraflar için temsili görseller kullanılır ve Temsilidir notu gösterilir.
+- Güncelleme kontrolü splash screen sırasında GitHub latest release üzerinden yapılır.
 
-- GitHub üzerinden otomatik veri güncelleme kontrolü.
-- Ana ekranda Favoriler, Fotoğraf Albümü ve arşiv girişleri sadeleştirildi.
-- Son Okunan ana ekrandan kaldırıldı.
-- Arama artık yazdıkça çalışır; Ara/Temizle butonları kaldırıldı.
-- Arama sonuçlarında eşleşen kelime vurgulanır.
-- Yazı favorileri ve fotoğraf favorileri ayrıldı.
-- Fotoğraf paylaşma özelliği eklendi.
-- Fotoğraflarda çift parmakla yakınlaştırma eklendi.
-- Fotoğraf altındaki uzun, kullanıcıyı ilgilendirmeyen duyuru metni kaldırıldı.
-- Tablolar daha okunaklı hale getirildi.
-- Sade okuma / tam görünüm seçeneği eklendi.
-- Boş durum ekranları ve yükleniyor iskeletleri eklendi.
-- Splash ekranı yenilendi: “Kırmızı Beyaz tarih...”
-- GitHub Actions artık release APK üretir; debug APK yayınlamaz.
+## NixOS build
 
-## Lokal release build
-
-```bash
-./gradlew --no-daemon assembleRelease
+```fish
+cd ~/Downloads/BalkesArsivi_2_0_Final
+chmod +x BUILD_NIXOS_2_0.fish BUILD_NIXOS_2_0.sh BUILD_AND_PUSH_2_0_FIXED.sh gradlew
+./BUILD_NIXOS_2_0.fish
 ```
 
-APK:
+APK çıkışı:
 
 ```text
-app/build/outputs/apk/release/app-release.apk
+~/BalkesArsivi-v2.0-final-release.apk
 ```
-
-## GitHub Actions
-
-Push sonrası `.github/workflows/android-build.yml` sadece release APK üretir.
-
-## Paket
-
-- Paket adı: `com.sinanjam.arsiv`
-- versionCode: `8`
-- versionName: `1.7-kirmizi-beyaz-hafiza`

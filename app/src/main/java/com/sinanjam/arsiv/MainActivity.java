@@ -90,7 +90,7 @@ public class MainActivity extends Activity {
     private static final int REQUEST_NOTIFICATIONS = 2211;
     private static final String GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Sinanjam/Balkes-Arsivi/main/app/src/main/assets/";
     private static final String REMOTE_ARCHIVE_URL = GITHUB_RAW_BASE + "archive/archive_items.json";
-    private static final String APP_VERSION_NAME = "1.9 Kayıp Sayfalar";
+    private static final String APP_VERSION_NAME = "2.0 Final";
 
     private final ArrayList<ArchiveItem> archiveItems = new ArrayList<ArchiveItem>();
     private final ArrayList<AlbumPhoto> albumPhotos = new ArrayList<AlbumPhoto>();
@@ -139,6 +139,11 @@ public class MainActivity extends Activity {
         ArrayList<PhotoItem> photos = new ArrayList<PhotoItem>();
     }
 
+    private static class ArticleTable {
+        String title;
+        ArrayList<ArrayList<String>> rows = new ArrayList<ArrayList<String>>();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -146,12 +151,12 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
         handler = new Handler(getMainLooper());
         darkTheme = prefs.getBoolean(KEY_DARK, false);
-        textSizeSp = prefs.getInt(KEY_TEXT_SIZE, 18);
+        textSizeSp = prefs.getInt(KEY_TEXT_SIZE, 21);
         createNotificationChannel();
         loadArchiveItems();
         showHome();
         handler.post(new Runnable() { @Override public void run() { showReleaseNotesIfNeeded(); } });
-        checkForGithubUpdates(false);
+        // Güncelleme yönlendirmesi SplashActivity içinde GitHub latest release kontrolüyle yapılır.
     }
 
     private void showHome() {
@@ -219,17 +224,9 @@ public class MainActivity extends Activity {
         archiveCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveList(""); } });
         content.addView(archiveCard, homeCardParams());
 
-        TextView lostCard = homeCard("Kayıp Sayfalar");
-        lostCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveList("Kayıp Sayfalar"); } });
-        content.addView(lostCard, homeCardParams());
-
-        TextView photoCard = homeCard("Fotoğraf Arşivi");
-        photoCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showPhotoAlbum(0); } });
-        content.addView(photoCard, homeCardParams());
-
-        TextView favoriteCard = homeCard("Favoriler");
-        favoriteCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritesList(); } });
-        content.addView(favoriteCard, homeCardParams());
+        TextView favoritesCard = homeCard("Favoriler");
+        favoritesCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritesMenu(); } });
+        content.addView(favoritesCard, homeCardParams());
 
         TextView aboutCard = homeCard("Uygulama Hakkında");
         aboutCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showAbout(); } });
@@ -247,6 +244,10 @@ public class MainActivity extends Activity {
         currentItem = null;
         currentPhotoIndex = 0;
         currentQuery = query == null ? "" : query;
+        searchTitleOnly = false;
+        searchContentOnly = false;
+        searchWithPhotos = false;
+        searchWithTables = false;
         applyBars();
 
         ScrollView scrollView = new ScrollView(this);
@@ -256,17 +257,116 @@ public class MainActivity extends Activity {
         scrollView.addView(root);
 
         root.addView(sectionHeader("Balkes Arşivi"));
-        root.addView(descriptionText(updateStatusText()));
-
-        Button update = wideButton("Güncelle");
-        update.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { checkForGithubUpdates(true); } });
-        root.addView(update, compactButtonParams());
+        root.addView(descriptionText("Tüm yazılar, fotoğraflar, puan tabloları ve maç skorları tek arşiv akışı içinde listelenir."));
 
         final LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
         addSearchArea(root, currentQuery, results);
         root.addView(results, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         populateArchiveResults(results, false);
+
+        Button home = wideButton("Ana Ekrana Dön");
+        home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
+        root.addView(home, wideButtonParams());
+        setContentView(scrollView);
+    }
+
+    private void showFavoritesMenu() {
+        screen = "favorites_menu";
+        currentQuery = "";
+        currentItem = null;
+        currentPhotoIndex = 0;
+        applyBars();
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        scrollView.addView(root);
+
+        root.addView(sectionHeader("Favoriler"));
+        root.addView(descriptionText("Favoriye aldığın fotoğraflar ve yazılar ayrı ayrı burada durur."));
+
+        TextView photos = homeCard("Favori Fotoğraflar");
+        photos.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritePhotosList(); } });
+        root.addView(photos, homeCardParams());
+
+        TextView articles = homeCard("Favori Yazılar");
+        articles.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoriteArticlesList(); } });
+        root.addView(articles, homeCardParams());
+
+        Button home = wideButton("Ana Ekrana Dön");
+        home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
+        root.addView(home, wideButtonParams());
+        setContentView(scrollView);
+    }
+
+    private void showFavoriteArticlesList() {
+        screen = "favorite_articles";
+        currentQuery = "";
+        currentItem = null;
+        currentPhotoIndex = 0;
+        applyBars();
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        scrollView.addView(root);
+
+        Button back = wideButton("← Favoriler");
+        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritesMenu(); } });
+        root.addView(back, compactButtonParams());
+        root.addView(sectionHeader("Favori Yazılar"));
+
+        ArrayList<ArchiveItem> favorites = filterItems("", true);
+        if (favorites.size() == 0) {
+            root.addView(emptyState("Henüz favori yazı yok", "Sevdiğin sezon arşivlerini yıldızla işaretleyebilirsin."));
+        } else {
+            for (int i = 0; i < favorites.size(); i++) {
+                final ArchiveItem item = favorites.get(i);
+                View row = listCard(item);
+                row.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(item, 0); } });
+                root.addView(row, listCardParams());
+            }
+        }
+
+        Button home = wideButton("Ana Ekrana Dön");
+        home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
+        root.addView(home, wideButtonParams());
+        setContentView(scrollView);
+    }
+
+    private void showFavoritePhotosList() {
+        screen = "favorite_photos";
+        currentQuery = "";
+        currentItem = null;
+        currentPhotoIndex = 0;
+        applyBars();
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        scrollView.addView(root);
+
+        Button back = wideButton("← Favoriler");
+        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritesMenu(); } });
+        root.addView(back, compactButtonParams());
+        root.addView(sectionHeader("Favori Fotoğraflar"));
+
+        ArrayList<AlbumPhoto> favPhotos = favoriteAlbumPhotos();
+        if (favPhotos.size() == 0) {
+            root.addView(emptyState("Henüz favori fotoğraf yok", "Fotoğraf ekranında kalp işaretine basarak albümünü oluşturabilirsin."));
+        } else {
+            for (int i = 0; i < favPhotos.size(); i++) {
+                final AlbumPhoto ap = favPhotos.get(i);
+                View row = photoFavoriteCard(ap);
+                row.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(ap.item, ap.photoIndex); } });
+                root.addView(row, listCardParams());
+            }
+        }
 
         Button home = wideButton("Ana Ekrana Dön");
         home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
@@ -393,42 +493,6 @@ public class MainActivity extends Activity {
         sp.setMargins(0, dp(8), 0, dp(10));
         root.addView(search, sp);
 
-        LinearLayout filters = new LinearLayout(this);
-        filters.setOrientation(LinearLayout.VERTICAL);
-        filters.setBackground(roundedBox(cardBackground(), subtleStrokeColor(), dp(18), dp(1)));
-        filters.setPadding(dp(10), dp(10), dp(10), dp(8));
-        TextView filterTitle = new TextView(this);
-        filterTitle.setText("Gelişmiş Filtreler");
-        filterTitle.setTextColor(accentColor());
-        filterTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        filterTitle.setTextSize(14);
-        filters.addView(filterTitle);
-
-        LinearLayout row1 = new LinearLayout(this);
-        row1.setOrientation(LinearLayout.HORIZONTAL);
-        row1.setGravity(Gravity.CENTER);
-        final Button titleOnly = pillButton(searchTitleOnly ? "Başlık ✓" : "Başlık");
-        final Button contentOnly = pillButton(searchContentOnly ? "Metin ✓" : "Metin");
-        titleOnly.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { searchTitleOnly = !searchTitleOnly; if (searchTitleOnly) searchContentOnly = false; showArchiveList(search.getText().toString()); } });
-        contentOnly.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { searchContentOnly = !searchContentOnly; if (searchContentOnly) searchTitleOnly = false; showArchiveList(search.getText().toString()); } });
-        row1.addView(titleOnly, pillParams());
-        row1.addView(contentOnly, pillParams());
-        filters.addView(row1);
-
-        LinearLayout row2 = new LinearLayout(this);
-        row2.setOrientation(LinearLayout.HORIZONTAL);
-        row2.setGravity(Gravity.CENTER);
-        final Button withPhotos = pillButton(searchWithPhotos ? "Fotoğraflı ✓" : "Fotoğraflı");
-        final Button withTables = pillButton(searchWithTables ? "Tablolu ✓" : "Tablolu");
-        withPhotos.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { searchWithPhotos = !searchWithPhotos; showArchiveList(search.getText().toString()); } });
-        withTables.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { searchWithTables = !searchWithTables; showArchiveList(search.getText().toString()); } });
-        row2.addView(withPhotos, pillParams());
-        row2.addView(withTables, pillParams());
-        filters.addView(row2);
-
-        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-        fp.setMargins(0, 0, 0, dp(12));
-        root.addView(filters, fp);
 
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) { }
@@ -444,7 +508,7 @@ public class MainActivity extends Activity {
         results.removeAllViews();
         ArrayList<ArchiveItem> filtered = filterItems(currentQuery, favoritesOnly);
         if (filtered.size() == 0) {
-            results.addView(emptyState(hasText(currentQuery) ? "Sonuç bulunamadı" : "Arşiv kaydı bulunamadı", hasText(currentQuery) ? "Farklı bir sezon, futbolcu veya skor deneyin." : "Veri güncellemesi yaparak tekrar deneyin."));
+            results.addView(emptyState(hasText(currentQuery) ? "Sonuç bulunamadı" : "Arşiv kaydı bulunamadı", hasText(currentQuery) ? "Farklı bir sezon, futbolcu veya skor deneyin." : "Arşiv verisi bu pakette yerel olarak bulunur."));
             return;
         }
         TextView count = descriptionText(filtered.size() + " sonuç bulundu");
@@ -471,8 +535,8 @@ public class MainActivity extends Activity {
         LinearLayout root = pageRoot();
         scrollView.addView(root);
 
-        Button back = wideButton("← Ana Ekrana Dön");
-        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
+        Button back = wideButton("← Balkes Arşivi");
+        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveList(currentQuery); } });
         root.addView(back, compactButtonParams());
 
         root.addView(sectionHeader(item.title));
@@ -490,8 +554,9 @@ public class MainActivity extends Activity {
         actionRow.setOrientation(LinearLayout.HORIZONTAL);
         actionRow.setGravity(Gravity.CENTER);
         final Button favorite = pillButton(isFavorite(item.id) ? "★ Yazı" : "☆ Yazı");
-        Button album = pillButton("Albüm");
-        final Button readerToggle = pillButton(readerMode() ? "Tam Görünüm" : "Sade Okuma");
+        Button album = pillButton(item.photos.size() > 0 ? "Fotoğraflar" : "Fotoğraf Yok");
+        album.setEnabled(item.photos.size() > 0);
+        final Button readerToggle = pillButton(readerMode() ? "PDF Görünüm" : "Sade Okuma");
         favorite.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
                 toggleFavorite(item.id);
@@ -512,20 +577,11 @@ public class MainActivity extends Activity {
         actionRow.addView(readerToggle, pillParams());
         root.addView(actionRow);
 
-        if (!readerMode()) addPhotoGallery(root, item);
         addTextSizeControls(root);
+        if (readerMode()) addPlainReaderCard(root, item);
+        else addPdfArticleContent(root, item);
 
-        TextView body = new TextView(this);
-        body.setText(articleBody(item));
-        body.setTextSize(textSizeSp);
-        body.setLineSpacing(0, 1.22f);
-        body.setTextColor(textColor());
-        body.setPadding(dp(16), dp(16), dp(16), dp(16));
-        body.setBackground(roundedBox(cardBackground(), accentColor(), dp(18), dp(1)));
-        root.addView(body, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
         root.addView(collapsibleInfoBox("Meraklısına", curiousText(item)));
-
-        if (!readerMode()) addPrettyTables(root, item.tables);
 
         Button top = wideButton("Başa Dön");
         top.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { scrollView.smoothScrollTo(0, 0); } });
@@ -538,29 +594,538 @@ public class MainActivity extends Activity {
         FrameLayout detailFrame = new FrameLayout(this);
         detailFrame.setBackgroundColor(pageBackground());
         detailFrame.addView(scrollView, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        FrameLayout.LayoutParams stickyProgressParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(5), Gravity.TOP);
-        stickyProgressParams.setMargins(dp(18), dp(4), dp(18), 0);
+        FrameLayout.LayoutParams stickyProgressParams = new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, dp(4), Gravity.BOTTOM);
         detailFrame.addView(progressBar, stickyProgressParams);
         setContentView(detailFrame);
 
-        final String scrollKey = "scroll_" + item.id;
-        scrollView.post(new Runnable() {
-            @Override public void run() { scrollView.scrollTo(0, prefs.getInt(scrollKey, 0)); }
-        });
-        scrollView.setOnScrollChangeListener(new View.OnScrollChangeListener() {
-            @Override public void onScrollChange(View v, int scrollX, int scrollY, int oldScrollX, int oldScrollY) {
-                prefs.edit().putInt(scrollKey, scrollY).apply();
+        scrollView.getViewTreeObserver().addOnScrollChangedListener(new android.view.ViewTreeObserver.OnScrollChangedListener() {
+            @Override public void onScrollChanged() {
+                int scrollY = scrollView.getScrollY();
                 int range = Math.max(1, scrollView.getChildAt(0).getHeight() - scrollView.getHeight());
                 progressBar.setProgress(Math.min(100, Math.max(0, (int)((scrollY * 100f) / range))));
             }
         });
     }
 
+    private void addPlainReaderCard(LinearLayout root, ArchiveItem item) {
+        TextView body = new TextView(this);
+        body.setText(articleBody(item));
+        body.setTextSize(textSizeSp);
+        body.setLineSpacing(0, 1.22f);
+        body.setTextColor(textColor());
+        body.setPadding(dp(16), dp(16), dp(16), dp(16));
+        body.setBackground(roundedBox(cardBackground(), accentColor(), dp(18), dp(1)));
+        root.addView(body, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        addPrettyTables(root, item.tables);
+    }
+
+    private void addPdfArticleContent(LinearLayout root, final ArchiveItem item) {
+        LinearLayout page = new LinearLayout(this);
+        page.setOrientation(LinearLayout.VERTICAL);
+        page.setPadding(dp(18), dp(20), dp(18), dp(20));
+        page.setBackground(roundedBox(pdfPageBackground(), accentColor(), dp(18), dp(1)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) page.setElevation(dp(3));
+        LinearLayout.LayoutParams pp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        pp.setMargins(0, dp(8), 0, dp(12));
+        root.addView(page, pp);
+
+        TextView kicker = new TextView(this);
+        kicker.setText(hasText(item.season) ? ("Balkes Arşivi • " + item.season) : "Balkes Arşivi");
+        kicker.setTextColor(accentColor());
+        kicker.setTypeface(Typeface.DEFAULT_BOLD);
+        kicker.setTextSize(14);
+        kicker.setGravity(Gravity.CENTER);
+        kicker.setLetterSpacing(0.06f);
+        kicker.setPadding(0, 0, 0, dp(8));
+        page.addView(kicker, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        ArrayList<String> paragraphs = articleParagraphs(item);
+        ArrayList<ArticleTable> tables = articleTables(item.tables);
+        int photoCount = item.photos.size();
+        int photoLimit = Math.min(photoCount, Math.max(1, Math.min(8, Math.max(1, paragraphs.size() / 2 + 1))));
+        int photoIndex = 0;
+        int tableIndex = 0;
+        boolean generatedShown = false;
+
+        if (paragraphs.size() == 0) paragraphs.add("Bu sayfa için okunabilir metin kısa olduğu için içerik arşiv kaydı olarak korunmuştur.");
+
+        for (int i = 0; i < paragraphs.size(); i++) {
+            addParagraphBlock(page, paragraphs.get(i), i == 0);
+
+            // İlk görsel en üste yığılmaz; giriş paragrafından sonra metnin içine girer.
+            if (i == 0) {
+                if (photoCount > 0 && photoIndex < photoLimit) {
+                    addArticlePhotoBlock(page, item, photoIndex, photoCount);
+                    photoIndex++;
+                } else if (photoCount == 0) {
+                    addGeneratedArchiveVisual(page, item);
+                    generatedShown = true;
+                }
+            }
+
+            // İlk tablo, giriş ve görselden sonra gelsin; sezon sayfalarında tablo metni bölmeden okunur.
+            if (i == 1 && tableIndex < tables.size()) {
+                addArticleTableBlock(page, tables.get(tableIndex));
+                tableIndex++;
+            }
+
+            // Devamda fotoğraf ve tabloyu düzenli aralıklarla metnin arasına dağıt.
+            if (i > 1 && photoIndex < photoLimit && ((i + 1) % 3 == 0)) {
+                addArticlePhotoBlock(page, item, photoIndex, photoCount);
+                photoIndex++;
+            }
+            if (i > 2 && tableIndex < tables.size() && ((i + 1) % 4 == 0)) {
+                addArticleTableBlock(page, tables.get(tableIndex));
+                tableIndex++;
+            }
+        }
+
+        if (photoCount == 0 && !generatedShown) {
+            addGeneratedArchiveVisual(page, item);
+        } else if (photoCount > 0) {
+            while (photoIndex < photoLimit) {
+                addArticlePhotoBlock(page, item, photoIndex, photoCount);
+                photoIndex++;
+            }
+            if (photoCount > photoLimit) addMorePhotosNotice(page, item, photoLimit, photoCount);
+        }
+
+        while (tableIndex < tables.size()) {
+            addArticleTableBlock(page, tables.get(tableIndex));
+            tableIndex++;
+        }
+    }
+
+    private void addParagraphBlock(LinearLayout page, String text, boolean lead) {
+        if (!hasText(text)) return;
+        TextView paragraph = new TextView(this);
+        paragraph.setText(text.trim());
+        paragraph.setTextColor(textColor());
+        paragraph.setTextSize(lead ? Math.max(textSizeSp + 1, 21) : textSizeSp);
+        paragraph.setLineSpacing(0, lead ? 1.34f : 1.30f);
+        paragraph.setPadding(dp(2), lead ? dp(10) : dp(8), dp(2), dp(10));
+        paragraph.setGravity(Gravity.START);
+        if (lead) paragraph.setTypeface(Typeface.DEFAULT_BOLD);
+        page.addView(paragraph, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+    }
+
+    private void addArticlePhotoBlock(LinearLayout page, final ArchiveItem item, final int index, int total) {
+        if (index < 0 || index >= item.photos.size()) return;
+        final PhotoItem photo = item.photos.get(index);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(10), dp(10), dp(10), dp(10));
+        box.setBackground(roundedBox(darkTheme ? Color.rgb(36, 24, 24) : Color.rgb(255, 252, 252), subtleStrokeColor(), dp(16), dp(1)));
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        bp.setMargins(0, dp(10), 0, dp(12));
+        page.addView(box, bp);
+
+        ZoomableImageView image = new ZoomableImageView(this);
+        setImageFromPath(image, photo.asset, R.drawable.sample_photo);
+        image.setAdjustViewBounds(false);
+        image.setContentDescription("Balkes Arşivi metin içi görseli");
+        image.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override public boolean onLongClick(View v) {
+                currentPhotoIndex = index;
+                showPhotoActionMenu(photo);
+                return true;
+            }
+        });
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(260));
+        ip.setMargins(0, 0, 0, dp(8));
+        box.addView(image, ip);
+
+        TextView caption = new TextView(this);
+        String text = cleanReaderText(photo.caption);
+        if (!hasText(text)) text = item.title;
+        caption.setText("Görsel " + (index + 1) + "/" + Math.max(1, total) + " • " + makeSnippet(text, 170));
+        caption.setTextColor(secondaryTextColor());
+        caption.setTextSize(14);
+        caption.setLineSpacing(0, 1.12f);
+        caption.setPadding(dp(2), 0, dp(2), dp(6));
+        box.addView(caption, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        Button save = pillButton("Kaydet");
+        Button open = pillButton("Albüm");
+        save.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { currentPhotoIndex = index; savePhotoWithPermissionCheck(); } });
+        open.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { currentPhotoIndex = index; showPhotoAlbum(albumIndexFor(item, index)); } });
+        row.addView(save, pillParams());
+        row.addView(open, pillParams());
+        box.addView(row);
+    }
+
+    private void addMorePhotosNotice(LinearLayout page, final ArchiveItem item, int shown, int total) {
+        TextView more = new TextView(this);
+        more.setText("Bu sayfada metin akışını bozmamak için " + shown + " görsel yerleştirildi. Tüm " + total + " görseli fotoğraf ekranında gezebilirsin.");
+        more.setTextColor(secondaryTextColor());
+        more.setTextSize(13);
+        more.setGravity(Gravity.CENTER);
+        more.setPadding(dp(12), dp(10), dp(12), dp(4));
+        page.addView(more, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        Button open = pillButton("Tüm Fotoğrafları Aç");
+        open.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showPhotoAlbum(albumIndexFor(item, 0)); } });
+        LinearLayout.LayoutParams op = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(46));
+        op.setMargins(0, dp(4), 0, dp(8));
+        page.addView(open, op);
+    }
+
+    private void addGeneratedArchiveVisual(LinearLayout page) {
+        addGeneratedArchiveVisual(page, currentItem);
+    }
+
+    private void addGeneratedArchiveVisual(LinearLayout page, ArchiveItem item) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(10), dp(10), dp(10), dp(10));
+        box.setBackground(roundedBox(darkTheme ? Color.rgb(36, 24, 24) : Color.rgb(255, 252, 252), subtleStrokeColor(), dp(16), dp(1)));
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        bp.setMargins(0, dp(10), 0, dp(12));
+        page.addView(box, bp);
+
+        ImageView image = new ImageView(this);
+        setImageFromPath(image, fallbackVisualForItem(item), R.drawable.sample_photo);
+        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        LinearLayout.LayoutParams ip = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, dp(230));
+        box.addView(image, ip);
+
+        TextView caption = new TextView(this);
+        String visual = fallbackVisualForItem(item);
+        if (visual.contains("tablo")) caption.setText("Temsili puan tablosu görseli • Temsilidir; gerçek sezon tablosu belgesi değildir.");
+        else if (visual.contains("skor")) caption.setText("Temsili maç skoru görseli • Temsilidir; gerçek maç belgesi değildir.");
+        else caption.setText("Temsili arşiv kapak görseli • Temsilidir; gerçek maç/fotoğraf belgesi değildir.");
+        caption.setTextColor(secondaryTextColor());
+        caption.setTextSize(14);
+        caption.setGravity(Gravity.CENTER);
+        caption.setPadding(dp(2), dp(8), dp(2), 0);
+        box.addView(caption, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+    }
+
+    private String fallbackVisualForItem(ArchiveItem item) {
+        if (item == null) return "generated/arsiv_temsili_1966.png";
+        String title = (item.title == null ? "" : item.title).toLowerCase(new Locale("tr", "TR"));
+        String body = ((item.summary == null ? "" : item.summary) + " " + (item.content == null ? "" : item.content)).toLowerCase(new Locale("tr", "TR"));
+        if (title.contains("skor") || title.contains("maç") || title.contains("mac") || body.contains("skor") || body.contains("maç sonucu") || body.contains("mac sonucu")) return "generated/arsiv_temsili_skor.png";
+        if (item.tableCount > 0 || title.contains("sıralama") || title.contains("puan") || body.contains("puan durumu")) return "generated/arsiv_temsili_tablo.png";
+        if (title.contains("sezon") || hasText(item.season)) return "generated/arsiv_temsili_sezon.png";
+        if (title.contains("gazete") || body.contains("gazete") || body.contains("kupür")) return "generated/arsiv_temsili_gazete.png";
+        return "generated/arsiv_temsili_1966.png";
+    }
+
+    private void addArticleTableBlock(LinearLayout page, final ArticleTable table) {
+        if (table == null || table.rows == null || table.rows.size() == 0) return;
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(12), dp(12), dp(12), dp(12));
+        box.setBackground(roundedBox(darkTheme ? Color.rgb(36, 24, 24) : Color.rgb(255, 252, 252), accentColor(), dp(16), dp(1)));
+        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        bp.setMargins(0, dp(12), 0, dp(12));
+        page.addView(box, bp);
+
+        String safeTitle = hasText(table.title) ? table.title : "Tablo";
+        TextView title = tableTitle(safeTitle);
+        box.addView(title);
+
+        if (looksLikeMatchTable(table.rows)) {
+            addMatchCards(box, table.rows);
+        } else if (looksLikeStandingTable(table.rows)) {
+            addStandingCards(box, table.rows);
+        } else {
+            HorizontalScrollView hsv = new HorizontalScrollView(this);
+            hsv.setFillViewport(true);
+            hsv.addView(buildTableLayout(table.rows), new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT));
+            box.addView(hsv, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        }
+
+        LinearLayout actions = new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setGravity(Gravity.CENTER);
+        Button full = pillButton("Tam Ekran");
+        Button share = pillButton("Paylaş");
+        full.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showTableFullscreen(hasText(table.title) ? table.title : "Tablo", table.rows); } });
+        share.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { shareTableAsImage(hasText(table.title) ? table.title : "Tablo", table.rows); } });
+        actions.addView(full, pillParams());
+        actions.addView(share, pillParams());
+        box.addView(actions);
+    }
+
+    private boolean looksLikeStandingTable(ArrayList<ArrayList<String>> rows) {
+        if (rows == null || rows.size() < 2) return false;
+        String header = joinCells(rows.get(0)).toLowerCase(new Locale("tr", "TR"));
+        return header.contains("takım") && (header.contains("puan") || header.contains(" p") || header.contains("takımlar"));
+    }
+
+    private boolean looksLikeMatchTable(ArrayList<ArrayList<String>> rows) {
+        if (rows == null || rows.size() < 2) return false;
+        String header = joinCells(rows.get(0)).toLowerCase(new Locale("tr", "TR"));
+        if (header.contains("tarih") && (header.contains("maç") || header.contains("mac"))) return true;
+        int matchLike = 0;
+        for (int i = 0; i < rows.size(); i++) {
+            ArrayList<String> r = rows.get(i);
+            if (r.size() >= 5 && isDateCell(r.get(0)) && isIntegerCell(r.get(2)) && isIntegerCell(r.get(3))) matchLike++;
+        }
+        return matchLike >= 2;
+    }
+
+    private String joinCells(ArrayList<String> cells) {
+        StringBuilder b = new StringBuilder();
+        if (cells == null) return "";
+        for (int i = 0; i < cells.size(); i++) {
+            if (i > 0) b.append(' ');
+            b.append(cells.get(i));
+        }
+        return b.toString();
+    }
+
+    private boolean isIntegerCell(String s) {
+        return s != null && s.trim().matches("\\d+");
+    }
+
+    private boolean isDateCell(String s) {
+        return s != null && s.trim().matches("\\d{1,2}\\.\\d{1,2}\\.\\d{4}");
+    }
+
+    private void addStandingCards(LinearLayout box, ArrayList<ArrayList<String>> rows) {
+        if (rows == null || rows.size() == 0) return;
+        TextView note = new TextView(this);
+        note.setText("Puan tablosu • takım logosuz temiz görünüm");
+        note.setTextColor(secondaryTextColor());
+        note.setTextSize(12);
+        note.setGravity(Gravity.CENTER);
+        note.setPadding(0, 0, 0, dp(8));
+        box.addView(note);
+        for (int i = 1; i < rows.size(); i++) {
+            ArrayList<String> r = rows.get(i);
+            if (r.size() < 3) continue;
+            String pos = cell(r, 0);
+            String team = cell(r, 1);
+            if (!hasText(team) || !isIntegerCell(pos)) continue;
+            String oyn = cell(r, 2), g = cell(r, 3), b = cell(r, 4), m = cell(r, 5), a = cell(r, 6), y = cell(r, 7), p = cell(r, 8), noteText = cell(r, 9);
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.VERTICAL);
+            row.setPadding(dp(12), dp(9), dp(12), dp(9));
+            row.setBackground(roundedBox(i % 2 == 0 ? softTableAltColor() : cardBackground(), subtleStrokeColor(), dp(12), dp(1)));
+            LinearLayout.LayoutParams rp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            rp.setMargins(0, dp(3), 0, dp(3));
+            box.addView(row, rp);
+
+            TextView top = new TextView(this);
+            top.setText(pos + ". " + team + (hasText(p) ? "   •   " + p + " P" : ""));
+            top.setTextColor(textColor());
+            top.setTypeface(Typeface.DEFAULT_BOLD);
+            top.setTextSize(Math.max(15, textSizeSp - 4));
+            row.addView(top);
+
+            TextView stats = new TextView(this);
+            String statLine = "O:" + oyn + "  G:" + g + "  B:" + b + "  M:" + m + "  A:" + a + "  Y:" + y;
+            if (hasText(noteText)) statLine += "  •  " + noteText;
+            stats.setText(statLine);
+            stats.setTextColor(secondaryTextColor());
+            stats.setTextSize(Math.max(12, textSizeSp - 7));
+            stats.setLineSpacing(0, 1.08f);
+            row.addView(stats);
+        }
+    }
+
+    private void addMatchCards(LinearLayout box, ArrayList<ArrayList<String>> rows) {
+        if (rows == null || rows.size() == 0) return;
+        TextView note = new TextView(this);
+        note.setText("Maç skorları • tarih, takım ve skor kartları");
+        note.setTextColor(secondaryTextColor());
+        note.setTextSize(12);
+        note.setGravity(Gravity.CENTER);
+        note.setPadding(0, 0, 0, dp(8));
+        box.addView(note);
+        String phase = "";
+        for (int i = 1; i < rows.size(); i++) {
+            ArrayList<String> r = rows.get(i);
+            if (!isDateCell(cell(r, 0))) {
+                String maybePhase = firstTextCell(r);
+                if (hasText(maybePhase) && !maybePhase.equals(phase)) {
+                    phase = maybePhase;
+                    TextView phaseView = tableTitle(phase);
+                    phaseView.setTextSize(15);
+                    box.addView(phaseView);
+                }
+                continue;
+            }
+            if (r.size() < 5) continue;
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setPadding(dp(12), dp(9), dp(12), dp(9));
+            card.setBackground(roundedBox(i % 2 == 0 ? softTableAltColor() : cardBackground(), subtleStrokeColor(), dp(12), dp(1)));
+            LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            cp.setMargins(0, dp(3), 0, dp(3));
+            box.addView(card, cp);
+
+            TextView date = new TextView(this);
+            date.setText(cell(r, 0));
+            date.setTextColor(accentColor());
+            date.setTypeface(Typeface.DEFAULT_BOLD);
+            date.setTextSize(12);
+            card.addView(date);
+
+            TextView match = new TextView(this);
+            match.setText(cell(r, 1) + "  " + cell(r, 2) + " - " + cell(r, 3) + "  " + cell(r, 4));
+            match.setTextColor(textColor());
+            match.setTypeface(Typeface.DEFAULT_BOLD);
+            match.setTextSize(Math.max(15, textSizeSp - 4));
+            match.setLineSpacing(0, 1.08f);
+            card.addView(match);
+        }
+    }
+
+    private String firstTextCell(ArrayList<String> cells) {
+        if (cells == null) return "";
+        for (int i = 0; i < cells.size(); i++) {
+            String c = cell(cells, i);
+            if (hasText(c) && !isIntegerCell(c) && !isDateCell(c)) return c;
+        }
+        return "";
+    }
+
+    private String cell(ArrayList<String> row, int index) {
+        if (row == null || index < 0 || index >= row.size()) return "";
+        return row.get(index) == null ? "" : row.get(index).trim();
+    }
+
+    private ArrayList<String> articleParagraphs(ArchiveItem item) {
+        ArrayList<String> paragraphs = new ArrayList<String>();
+        String body = articleBody(item);
+        if (!hasText(body)) return paragraphs;
+        body = body.replace("\r", "\n").trim();
+        String[] rough = body.split("\n\\s*\n");
+        for (int i = 0; i < rough.length; i++) {
+            String part = rough[i].trim();
+            if (!hasText(part)) continue;
+            if (part.length() > 430) {
+                String[] sentences = part.split("(?<=[.!?])\\s+");
+                StringBuilder chunk = new StringBuilder();
+                for (int j = 0; j < sentences.length; j++) {
+                    if (chunk.length() + sentences[j].length() > 430 && chunk.length() > 0) {
+                        paragraphs.add(chunk.toString().trim());
+                        chunk.setLength(0);
+                    }
+                    if (chunk.length() > 0) chunk.append(' ');
+                    chunk.append(sentences[j]);
+                }
+                if (chunk.length() > 0) paragraphs.add(chunk.toString().trim());
+            } else {
+                paragraphs.add(part);
+            }
+        }
+        return paragraphs;
+    }
+
+    private ArrayList<ArticleTable> articleTables(String markdown) {
+        ArrayList<ArticleTable> out = new ArrayList<ArticleTable>();
+        if (!hasText(markdown)) return out;
+        String normalized = markdown.replace("\r", "\n");
+        String[] chunks = normalized.split("(?m)(?=^\\s*(?:#{0,6}\\s*)?Tablo\\s*\\d+)");
+        int shown = 0;
+        for (int c = 0; c < chunks.length; c++) {
+            String chunk = chunks[c].trim();
+            if (!hasText(chunk) || chunk.indexOf('|') < 0) continue;
+            ArticleTable table = new ArticleTable();
+            String title = "Tablo " + (shown + 1);
+            String firstLine = chunk.split("\n", 2)[0].trim();
+            firstLine = firstLine.replaceFirst("^#{1,6}\\s*", "").trim();
+            if (firstLine.toLowerCase(new Locale("tr", "TR")).startsWith("tablo")) title = firstLine;
+            table.rows = normalizeTableRows(parseTableRows(chunk));
+            if (table.rows.size() == 0) continue;
+            String better = extractTableTitleFromRows(table.rows);
+            if (hasText(better)) {
+                title = title + " • " + better;
+            }
+            table.title = cleanReaderText(title);
+            if (table.rows.size() > 0) {
+                out.add(table);
+                shown++;
+            }
+        }
+        return out;
+    }
+
+    private String extractTableTitleFromRows(ArrayList<ArrayList<String>> rows) {
+        if (rows == null || rows.size() == 0) return "";
+        ArrayList<String> first = rows.get(0);
+        int nonEmpty = 0;
+        String text = "";
+        for (int i = 0; i < first.size(); i++) {
+            if (hasText(first.get(i))) { nonEmpty++; if (!hasText(text)) text = first.get(i); }
+        }
+        if (nonEmpty == 1 && !looksLikeHeaderText(text)) {
+            rows.remove(0);
+            return text;
+        }
+        return "";
+    }
+
+    private boolean looksLikeHeaderText(String text) {
+        String t = text == null ? "" : text.toLowerCase(new Locale("tr", "TR"));
+        return t.equals("sıra") || t.contains("takım") || t.contains("tarih") || t.contains("maç") || t.contains("mac");
+    }
+
+    private ArrayList<ArrayList<String>> normalizeTableRows(ArrayList<ArrayList<String>> rows) {
+        ArrayList<ArrayList<String>> out = new ArrayList<ArrayList<String>>();
+        if (rows == null) return out;
+        for (int i = 0; i < rows.size(); i++) {
+            ArrayList<String> row = rows.get(i);
+            while (row.size() > 0 && !hasText(row.get(row.size() - 1))) row.remove(row.size() - 1);
+            if (row.size() == 0 || rowIsEmpty(row)) continue;
+            for (int j = 0; j < row.size(); j++) row.set(j, cleanTableCell(row.get(j)));
+            out.add(row);
+        }
+        if (out.size() == 0) return out;
+        // If a title row was not removed because it had empty cells around it, remove it here.
+        extractTableTitleFromRows(out);
+        if (out.size() == 0) return out;
+        String first = joinCells(out.get(0)).toLowerCase(new Locale("tr", "TR"));
+        boolean firstIsHeader = first.contains("takım") || first.contains("tarih") || first.contains("sıra");
+        if (!firstIsHeader && out.get(0).size() >= 8 && isIntegerCell(out.get(0).get(0))) {
+            ArrayList<String> h = new ArrayList<String>();
+            h.add("Sıra"); h.add("Takım"); h.add("O"); h.add("G"); h.add("B"); h.add("M"); h.add("A"); h.add("Y"); h.add("P"); h.add("Not");
+            out.add(0, h);
+        } else if (first.contains("tarih") && out.get(0).size() < 5) {
+            ArrayList<String> h = new ArrayList<String>();
+            h.add("Tarih"); h.add("Ev Sahibi"); h.add("Skor"); h.add("Skor"); h.add("Rakip");
+            out.set(0, h);
+        }
+        return out;
+    }
+
+    private String cleanTableCell(String text) {
+        if (text == null) return "";
+        String s = text.trim();
+        s = s.replace("Sampiyon", "Şampiyon");
+        s = s.replace("S ampiyon", "Şampiyon");
+        s = s.replace("Ş ampiyon", "Şampiyon");
+        s = s.replace("Oynadıgımız", "Oynadığımız");
+        s = s.replace("Ilk Yarı", "İlk Yarı");
+        s = s.replace("Ikinci Yarı", "İkinci Yarı");
+        s = s.replaceAll("\\s+", " ");
+        return s.trim();
+    }
+
+    private boolean shouldInsertPhotoAfter(int paragraphIndex, int paragraphCount, int photoIndex) {
+        if (paragraphCount <= 1) return paragraphIndex == 0;
+        if (photoIndex == 0) return paragraphIndex == 0;
+        int step = Math.max(2, paragraphCount / 4);
+        return paragraphIndex > 0 && ((paragraphIndex + 1) % step == 0);
+    }
+
+    private boolean shouldInsertTableAfter(int paragraphIndex, int paragraphCount, int tableIndex) {
+        if (paragraphCount <= 2) return paragraphIndex == paragraphCount - 1;
+        if (tableIndex == 0) return paragraphIndex >= Math.min(2, paragraphCount - 1);
+        int step = Math.max(3, paragraphCount / 3);
+        return paragraphIndex > 0 && ((paragraphIndex + 1) % step == 0);
+    }
+
     private void addPhotoGallery(LinearLayout root, final ArchiveItem item) {
         if (item.photos.size() == 0) {
-            ZoomableImageView image = new ZoomableImageView(this);
-            image.setImageResource(R.drawable.sample_photo);
-            root.addView(image, imageParams());
+            addGeneratedArchiveVisual(root, item);
             return;
         }
 
@@ -635,37 +1200,11 @@ public class MainActivity extends Activity {
     }
 
     private void addPrettyTables(LinearLayout root, String markdown) {
-        if (!hasText(markdown)) return;
+        ArrayList<ArticleTable> tables = articleTables(markdown);
+        if (tables.size() == 0) return;
         root.addView(sectionSubHeader("Tablolar"));
-        String[] chunks = markdown.split("(?=Tablo \\d+)");
-        int shown = 0;
-        for (int c = 0; c < chunks.length; c++) {
-            String chunk = chunks[c].trim();
-            if (!hasText(chunk) || chunk.indexOf('|') < 0) continue;
-            shown++;
-            String title = "Tablo " + shown;
-            String firstLine = chunk.split("\n", 2)[0].trim();
-            if (firstLine.startsWith("Tablo")) title = firstLine;
-            root.addView(tableTitle(title));
-            final ArrayList<ArrayList<String>> rows = parseTableRows(chunk);
-            HorizontalScrollView hsv = new HorizontalScrollView(this);
-            hsv.setFillViewport(true);
-            hsv.addView(buildTableLayout(rows), new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT));
-            LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
-            sp.setMargins(0, dp(8), 0, dp(8));
-            root.addView(hsv, sp);
-
-            LinearLayout actions = new LinearLayout(this);
-            actions.setOrientation(LinearLayout.HORIZONTAL);
-            actions.setGravity(Gravity.CENTER);
-            Button full = pillButton("Tam Ekran");
-            Button share = pillButton("Paylaş");
-            final String fullTitle = title;
-            full.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showTableFullscreen(fullTitle, rows); } });
-            share.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { shareTableAsImage(fullTitle, rows); } });
-            actions.addView(full, pillParams());
-            actions.addView(share, pillParams());
-            root.addView(actions);
+        for (int i = 0; i < tables.size(); i++) {
+            addArticleTableBlock(root, tables.get(i));
         }
     }
 
@@ -894,10 +1433,24 @@ public class MainActivity extends Activity {
     private void showReleaseNotesIfNeeded() {
         String seen = prefs.getString(KEY_LAST_VERSION_SEEN, "");
         if (APP_VERSION_NAME.equals(seen)) return;
-        prefs.edit().putString(KEY_LAST_VERSION_SEEN, APP_VERSION_NAME).apply();
+        prefs.edit().putString(KEY_LAST_VERSION_SEEN, APP_VERSION_NAME).putBoolean(KEY_READER_MODE, false).apply();
         new AlertDialog.Builder(this)
-                .setTitle("1.9 Kayıp Sayfalar")
-                .setMessage("Yenilikler:\n\n• Wayback verileri eklendi\n• Kayıp Sayfalar bölümü eklendi\n• Fotoğraf Arşivi geri eklendi\n• Tekrarlı sayfa ve fotoğraflar ayrıştırıldı\n• Tablolar tekrar görünür hale getirildi\n• Okuma ilerleme çubuğu sabitlendi")
+                .setTitle("Balkes Arşivi 2.0 Final")
+                .setMessage("Güncelleme notları:\n\n" +
+                        "• Ana ekran sadeleştirildi; Balkes Arşivi, Favoriler ve Uygulama Hakkında kutucukları bırakıldı.\n" +
+                        "• Kayıp Sayfalar ayrımı kaldırıldı; tüm içerikler tek ve düz Balkes Arşivi akışında toplandı.\n" +
+                        "• PDF/dergi tarzı okuma sayfası eklendi; görseller artık üstte yığılmadan metnin arasında gösterilir.\n" +
+                        "• Fotoğraflara uzun basınca kaydetme/paylaşma/favoriye alma akışı korunur.\n" +
+                        "• Metin boyutu artırma/azaltma seçimi cihazda saklanır.\n" +
+                        "• Arama ekranındaki filtreler ve arşiv içindeki Güncelle kutucuğu kaldırıldı.\n" +
+                        "• Ziyaretçi defteri ve Kayıp Sayfalar ifadeleri arayüzden temizlendi.\n" +
+                        "• Ham Markdown başlıkları, boş tablo başlıkları ve dev boşluklar temizlendi.\n" +
+                        "• Puan tabloları takım logosuz, kartlı ve mobil okunabilir düzene çevrildi.\n" +
+                        "• Maç skorları tarih, takım ve skor bilgisiyle özel skor kartları halinde gösterilir.\n" +
+                        "• Eksik fotoğraflar için temsili arşiv görselleri kullanılır ve altında Temsilidir notu görünür.\n" +
+                        "• Temsili puan tablosu görselleri dolduruldu ve Temsilidir ibaresi eklendi.\n" +
+                        "• Ana ekrana Favoriler kutucuğu eklendi; içinde Favori Fotoğraflar ve Favori Yazılar ayrı seçeneklerdir.\n" +
+                        "• Uygulama açılırken internet varsa GitHub latest release kontrolü yapılır; yeni sürüm varsa GitHub latest release sayfasına yönlendirilir.")
                 .setPositiveButton("Devam", null)
                 .show();
     }
@@ -915,19 +1468,11 @@ public class MainActivity extends Activity {
         root.setGravity(Gravity.CENTER_HORIZONTAL);
         scrollView.addView(root);
 
-        ImageView logo = new ImageView(this);
-        logo.setImageResource(R.drawable.balkes_logo);
-        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        logo.setBackgroundColor(Color.TRANSPARENT);
-        LinearLayout.LayoutParams logoParams = new LinearLayout.LayoutParams(dp(190), dp(190));
-        logoParams.setMargins(0, 0, 0, dp(18));
-        root.addView(logo, logoParams);
-
         root.addView(sectionHeader("Uygulama Hakkında"));
         TextView about = new TextView(this);
-        String html = "<b>Balkes Arşivi</b><br><br>" +
-                "Kapatılan Balkes Arşivi projesinden kurtarılan verilerle hazırlanmış Balıkesirspor arşiv uygulamasıdır.<br><br>" +
-                "Kaynak kodu ve iletişim: <a href=\"https://github.com/Sinanjam/Balkes-Arsivi.git\">https://github.com/Sinanjam/Balkes-Arsivi.git</a>";
+        String html = "Kapatılan Balkes Arşivi projesinden kurtarılan verilerle yapılmış Balıkesirspor Arşivi.<br><br>" +
+                "Vibecoding'ten faydalanılmıştır.<br><br>" +
+                "Github, kaynak kodu ve iletişim: <a href=\"https://github.com/Sinanjam/Balkes-Arsivi.git\">https://github.com/Sinanjam/Balkes-Arsivi.git</a>";
         Spanned text;
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) text = Html.fromHtml(html, Html.FROM_HTML_MODE_LEGACY);
         else text = Html.fromHtml(html);
@@ -936,8 +1481,8 @@ public class MainActivity extends Activity {
         about.setLinkTextColor(accentColor());
         about.setTextColor(textColor());
         about.setTextSize(textSizeSp);
-        about.setLineSpacing(0, 1.18f);
-        about.setPadding(dp(16), dp(16), dp(16), dp(16));
+        about.setLineSpacing(0, 1.22f);
+        about.setPadding(dp(18), dp(18), dp(18), dp(18));
         about.setBackground(roundedBox(cardBackground(), accentColor(), dp(18), dp(1)));
         root.addView(about, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
@@ -1218,7 +1763,10 @@ public class MainActivity extends Activity {
                 JSONObject o = arr.getJSONObject(i);
                 ArchiveItem item = new ArchiveItem();
                 item.id = o.optString("id");
-                item.title = o.optString("title");
+                item.title = cleanTitleForDisplay(o.optString("title"));
+                String lowerId = item.id == null ? "" : item.id.toLowerCase(Locale.ROOT);
+                String lowerTitle = item.title == null ? "" : item.title.toLowerCase(new Locale("tr", "TR"));
+                if (lowerId.contains("ziyaretci-defteri") || lowerTitle.contains("ziyaretçi defteri") || lowerTitle.contains("ziyaretci defteri")) continue;
                 item.season = o.optString("season");
                 item.summary = o.optString("summary");
                 item.content = o.optString("content");
@@ -1286,7 +1834,7 @@ public class MainActivity extends Activity {
                                 Toast.makeText(MainActivity.this, "Arşiv güncellendi.", Toast.LENGTH_LONG).show();
                                 if (manual) showArchiveList(currentQuery);
                                 else if ("archive_list".equals(screen)) showArchiveList(currentQuery);
-                                else if ("favorites".equals(screen)) showFavoritesList();
+                                else if ("favorites".equals(screen) || "favorites_menu".equals(screen)) showFavoritesMenu();
                                 else if ("home".equals(screen)) showHome();
                             }
                         });
@@ -1597,7 +2145,7 @@ public class MainActivity extends Activity {
 
         ImageView thumb = new ImageView(this);
         if (item.photos.size() > 0) setImageFromPath(thumb, item.photos.get(0).asset, R.drawable.sample_photo);
-        else thumb.setImageResource(R.drawable.sample_photo);
+        else setImageFromPath(thumb, fallbackVisualForItem(item), R.drawable.sample_photo);
         thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
         thumb.setBackgroundColor(Color.TRANSPARENT);
         LinearLayout.LayoutParams thumbParams = new LinearLayout.LayoutParams(dp(100), dp(82));
@@ -1620,7 +2168,6 @@ public class MainActivity extends Activity {
         if (hasText(item.season)) meta += item.season;
         if (item.imageCount > 0) meta += (meta.length() > 0 ? " • " : "") + item.imageCount + " foto";
         if (item.tableCount > 0) meta += (meta.length() > 0 ? " • " : "") + item.tableCount + " tablo";
-        if (hasText(item.sourceType)) meta += (meta.length() > 0 ? " • " : "") + item.sourceType;
         if (hasText(meta)) {
             TextView season = new TextView(this);
             season.setText(meta);
@@ -1645,7 +2192,7 @@ public class MainActivity extends Activity {
     private LinearLayout pageRoot() {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setPadding(dp(18), dp(24), dp(18), dp(28));
+        root.setPadding(dp(18), dp(48), dp(18), dp(72));
         return root;
     }
 
@@ -1784,6 +2331,7 @@ public class MainActivity extends Activity {
 
     private int accentColor() { return Color.rgb(178, 0, 0); }
     private int pageBackground() { return darkTheme ? Color.rgb(26, 18, 18) : Color.rgb(255, 248, 248); }
+    private int pdfPageBackground() { return darkTheme ? Color.rgb(39, 30, 30) : Color.rgb(255, 255, 252); }
     private int cardBackground() { return darkTheme ? Color.rgb(45, 31, 31) : Color.WHITE; }
     private int textColor() { return darkTheme ? Color.WHITE : Color.rgb(28, 22, 22); }
     private int secondaryTextColor() { return darkTheme ? Color.rgb(224, 205, 205) : Color.rgb(92, 72, 72); }
@@ -1807,13 +2355,26 @@ public class MainActivity extends Activity {
         return s.substring(0, max).trim() + "…";
     }
 
+    private String cleanTitleForDisplay(String title) {
+        if (!hasText(title)) return "";
+        String s = title.trim();
+        s = s.replaceFirst("(?is)^\\s*Kayıp\\s+Sayfalar\\s*:\\s*", "");
+        s = s.replaceFirst("(?is)^\\s*Kayip\\s+Sayfalar\\s*:\\s*", "");
+        return s.trim();
+    }
+
     private String cleanReaderText(String text) {
         if (!hasText(text)) return "";
         String s = text.replace("\r", "\n");
+        s = s.replaceFirst("(?is)^\\s*Kayıp\\s+Sayfalar\\s*:\\s*", "");
+        s = s.replaceFirst("(?is)^\\s*Kayip\\s+Sayfalar\\s*:\\s*", "");
         s = s.replaceAll("(?is)Önemli\\s+Duyuru:.*?bilmenizde\\s+fayda\\s+var\\.?", " ");
         s = s.replaceAll("(?m)^\\s*Kaynak:\\s*https?://\\S+\\s*$", " ");
         s = s.replaceAll("(?m)^\\s*-\\s*image:.*$", " ");
         s = s.replaceAll("(?m)^\\s*media/images/.*$", " ");
+        s = s.replaceAll("(?mis)^\\s*#{1,6}\\s*Tablolar?\\b[\\s\\S]*$", " ");
+        s = s.replaceAll("(?mis)^\\s*#{1,6}\\s*Tablo\\s*\\d+\\b[\\s\\S]*$", " ");
+        s = s.replaceAll("(?mis)^\\s*Tablo\\s*\\d+\\b[\\s\\S]*$", " ");
         s = s.replaceAll("(?m)^\\s*\\|.*\\|\\s*$", " ");
         s = s.replaceAll("[ \\t]+", " ");
         s = s.replaceAll("\\n{3,}", "\\n\\n");
@@ -1823,8 +2384,12 @@ public class MainActivity extends Activity {
     private String cleanupArticleContent(String title, String text) {
         if (!hasText(text)) return "";
         String s = text.replace("\r", "\n");
+        s = s.replaceFirst("(?is)^\\s*Kayıp\\s+Sayfalar\\s*:\\s*", "");
+        s = s.replaceFirst("(?is)^\\s*Kayip\\s+Sayfalar\\s*:\\s*", "");
         if (hasText(title)) s = s.replaceFirst("(?is)^\\Q" + title + "\\E\\s*", "");
-        s = s.replaceAll("(?ms)^Tablo\\s+\\d+.*?(?=^Tablo\\s+\\d+|\\z)", "\\n");
+        s = s.replaceAll("(?mis)^\\s*#{1,6}\\s*Tablolar?\\b[\\s\\S]*$", "\\n");
+        s = s.replaceAll("(?mis)^\\s*#{1,6}\\s*Tablo\\s*\\d+\\b[\\s\\S]*$", "\\n");
+        s = s.replaceAll("(?mis)^\\s*Tablo\\s*\\d+\\b[\\s\\S]*$", "\\n");
         s = s.replaceAll("(?mis)-\\s*image:\\s*media/images/.*?(?=(?:\\n-\\s*image:|\\nKaynak:|\\z))", "\\n");
         s = s.replaceAll("(?m)^\\s*Kaynak:\\s*https?://\\S+\\s*$", "\\n");
         s = cleanReaderText(s);
