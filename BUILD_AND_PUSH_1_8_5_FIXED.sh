@@ -62,8 +62,7 @@ EOF
 
 git add .
 git commit -m "1.8.5 fix sürümü" || true
-git pull --rebase "https://${GUSER}:${GTOKEN}@github.com/Sinanjam/Balkes-Arsivi.git" main || true
-git push --force-with-lease "https://${GUSER}:${GTOKEN}@github.com/Sinanjam/Balkes-Arsivi.git" main
+git push --force "https://${GUSER}:${GTOKEN}@github.com/Sinanjam/Balkes-Arsivi.git" main
 
 git tag -f "$TAG"
 git push -f "https://${GUSER}:${GTOKEN}@github.com/Sinanjam/Balkes-Arsivi.git" "$TAG"
