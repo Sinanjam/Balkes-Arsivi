@@ -9,10 +9,10 @@ android {
 
     defaultConfig {
         applicationId 'com.sinanjam.arsiv'
-        minSdk 21
+        minSdk 23
         targetSdk 35
-        versionCode 211
-        versionName '2.1.1-compat-fix'
+        versionCode 212
+        versionName '2.1.2-list-web-fix'
     }
 
     signingConfigs {

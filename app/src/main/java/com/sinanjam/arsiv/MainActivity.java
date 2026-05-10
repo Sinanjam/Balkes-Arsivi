@@ -94,7 +94,8 @@ public class MainActivity extends Activity {
     private static final String REMOTE_ARCHIVE_URL = GITHUB_RAW_BASE + "archive/archive_items.json";
     private static final String APP_VERSION_NAME = "2.0 Final";
     private static final int MAX_INLINE_TABLES = 8;
-    private static final int MAX_LIST_ITEMS = 45;
+    private static final int ARCHIVE_PAGE_SIZE = 24;
+    private static final String WEB_SITE_URL = "https://sinanjam.github.io/Balkes-Arsivi-Web/";
 
     private final ExecutorService imageExecutor = Executors.newFixedThreadPool(2);
     private final ArrayList<ArchiveItem> archiveItems = new ArrayList<ArchiveItem>();
@@ -112,6 +113,7 @@ public class MainActivity extends Activity {
     private ArchiveItem currentItem;
     private int currentPhotoIndex = 0;
     private int currentAlbumIndex = 0;
+    private int archivePage = 0;
     private boolean pendingPhotoSave;
     private String pendingNotificationLocation;
 
@@ -248,6 +250,10 @@ public class MainActivity extends Activity {
         aboutCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showAbout(); } });
         content.addView(aboutCard, homeCardParams());
 
+        TextView webCard = homeCard("Web Sitesi");
+        webCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { openExternalUrl(WEB_SITE_URL); } });
+        content.addView(webCard, homeCardParams());
+
 
         root.addView(scroll, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
         signature.bringToFront();
@@ -260,6 +266,7 @@ public class MainActivity extends Activity {
         currentItem = null;
         currentPhotoIndex = 0;
         currentQuery = query == null ? "" : query;
+        archivePage = 0;
         searchTitleOnly = false;
         searchContentOnly = false;
         searchWithPhotos = false;
@@ -285,6 +292,15 @@ public class MainActivity extends Activity {
         home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
         root.addView(home, wideButtonParams());
         setContentView(scrollView);
+    }
+
+    private void openExternalUrl(String url) {
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            startActivity(intent);
+        } catch (Exception e) {
+            Toast.makeText(this, "Bağlantı açılamadı.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void showFavoritesMenu() {
@@ -515,29 +531,61 @@ public class MainActivity extends Activity {
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) { }
             @Override public void afterTextChanged(Editable editable) {
                 currentQuery = editable == null ? "" : editable.toString();
+                archivePage = 0;
                 populateArchiveResults(results, false);
             }
         });
     }
 
-    private void populateArchiveResults(LinearLayout results, boolean favoritesOnly) {
+    private void populateArchiveResults(final LinearLayout results, boolean favoritesOnly) {
         results.removeAllViews();
-        ArrayList<ArchiveItem> filtered = filterItems(currentQuery, favoritesOnly);
+        final ArrayList<ArchiveItem> filtered = filterItems(currentQuery, favoritesOnly);
         if (filtered.size() == 0) {
-            results.addView(emptyState(hasText(currentQuery) ? "Sonuç bulunamadı" : "Arşiv kaydı bulunamadı", hasText(currentQuery) ? "Farklı bir sezon, futbolcu veya skor deneyin." : "Arşiv verisi bu pakette yerel olarak bulunur."));
+            results.addView(emptyState(hasText(currentQuery) ? "Sonuç bulunamadı" : "Arşiv kaydı bulunamadı", hasText(currentQuery) ? "Farklı bir sezon, futbolcu veya skor deneyin." : "Arşiv verisi bu pakette yerel olarak bulunur. Uygulamayı kapatıp açınca yerel veri otomatik tekrar denenir."));
             return;
         }
-        int shown = Math.min(filtered.size(), MAX_LIST_ITEMS);
-        TextView count = descriptionText(filtered.size() + " sonuç bulundu" + (filtered.size() > shown ? " • ilk " + shown + " kayıt gösteriliyor" : ""));
+
+        int totalPages = Math.max(1, (filtered.size() + ARCHIVE_PAGE_SIZE - 1) / ARCHIVE_PAGE_SIZE);
+        if (archivePage < 0) archivePage = 0;
+        if (archivePage >= totalPages) archivePage = totalPages - 1;
+        int start = archivePage * ARCHIVE_PAGE_SIZE;
+        int end = Math.min(filtered.size(), start + ARCHIVE_PAGE_SIZE);
+
+        TextView count = descriptionText(filtered.size() + (hasText(currentQuery) ? " sonuç" : " arşiv kaydı") + "  •  Sayfa " + (archivePage + 1) + "/" + totalPages);
         results.addView(count);
-        for (int i = 0; i < shown; i++) {
+
+        for (int i = start; i < end; i++) {
             final ArchiveItem item = filtered.get(i);
             View row = listCard(item);
             row.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveDetail(item, 0); } });
             results.addView(row, listCardParams());
         }
-        if (filtered.size() > shown) {
-            results.addView(descriptionText("Daha fazla kayıt görmek için arama kutusuna sezon, takım, tarih veya kelime yaz."));
+
+        if (totalPages > 1) {
+            LinearLayout nav = new LinearLayout(this);
+            nav.setOrientation(LinearLayout.HORIZONTAL);
+            nav.setGravity(Gravity.CENTER);
+            Button prev = pillButton("‹ Önceki");
+            Button next = pillButton("Sonraki ›");
+            prev.setEnabled(archivePage > 0);
+            next.setEnabled(archivePage < totalPages - 1);
+            prev.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    archivePage = Math.max(0, archivePage - 1);
+                    populateArchiveResults(results, false);
+                }
+            });
+            next.setOnClickListener(new View.OnClickListener() {
+                @Override public void onClick(View v) {
+                    archivePage = archivePage + 1;
+                    populateArchiveResults(results, false);
+                }
+            });
+            nav.addView(prev, pillParams());
+            nav.addView(next, pillParams());
+            LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            np.setMargins(0, dp(8), 0, dp(12));
+            results.addView(nav, np);
         }
     }
 
@@ -1803,27 +1851,61 @@ public class MainActivity extends Activity {
 
     private void loadArchiveItems() {
         archiveItems.clear();
-        boolean loaded = false;
+
+        ArrayList<ArchiveItem> localItems = null;
+        ArrayList<ArchiveItem> cachedItems = null;
+
+        try {
+            localItems = parseArchiveItemsToList(readAssetText("archive/archive_items.json"));
+        } catch (Exception ignored) { }
+
         String cached = prefs.getString(KEY_REMOTE_JSON, "");
-        if (hasText(cached)) loaded = parseArchiveItems(cached);
-        if (!loaded) {
-            try {
-                loaded = parseArchiveItems(readAssetText("archive/archive_items.json"));
-            } catch (Exception ignored) { }
+        if (hasText(cached)) {
+            cachedItems = parseArchiveItemsToList(cached);
         }
-        if (!loaded) {
+
+        ArrayList<ArchiveItem> selected = chooseBestArchiveList(localItems, cachedItems);
+        if (selected != null && selected.size() > 0) {
+            archiveItems.addAll(selected);
+        } else {
             ArchiveItem item = new ArchiveItem();
-            item.id = "balkes_arsivi";
+            item.id = "balkes_arsivi_yerel_veri_bekleniyor";
             item.title = "Balkes Arşivi";
-            item.summary = "Balıkesirspor arşivi.";
-            item.content = "Balıkesirspor arşivi.";
+            item.summary = "Arşiv verisi bu pakette yerel olarak bulunur. Uygulamayı kapatıp yeniden açmayı deneyin.";
+            item.content = "Arşiv verisi bu pakette yerel olarak bulunur. Uygulamayı kapatıp yeniden açmayı deneyin.";
             archiveItems.add(item);
         }
         collectAlbumPhotos();
     }
 
+    private ArrayList<ArchiveItem> chooseBestArchiveList(ArrayList<ArchiveItem> localItems, ArrayList<ArchiveItem> cachedItems) {
+        int localCount = localItems == null ? 0 : localItems.size();
+        int cachedCount = cachedItems == null ? 0 : cachedItems.size();
+
+        if (localCount == 0 && cachedCount > 0) return cachedItems;
+        if (localCount > 0 && cachedCount == 0) return localItems;
+        if (localCount == 0) return null;
+
+        // Bazı güncellemelerden sonra eski SharedPreferences içinde eksik/yarım uzaktan JSON kalabiliyor.
+        // Bu durumda boş liste hatası olmaması için paket içindeki tam yerel arşiv her zaman güvenli kaynak kabul edilir.
+        int minimumSafeRemote = Math.max(10, (int) (localCount * 0.80f));
+        if (cachedCount >= minimumSafeRemote) return cachedItems;
+
+        prefs.edit().remove(KEY_REMOTE_JSON).remove(KEY_REMOTE_HASH).apply();
+        return localItems;
+    }
+
     private boolean parseArchiveItems(String json) {
+        ArrayList<ArchiveItem> parsed = parseArchiveItemsToList(json);
+        if (parsed == null || parsed.size() == 0) return false;
+        archiveItems.clear();
+        archiveItems.addAll(parsed);
+        return true;
+    }
+
+    private ArrayList<ArchiveItem> parseArchiveItemsToList(String json) {
         try {
+            if (!hasText(json)) return null;
             JSONObject root = new JSONObject(json);
             JSONArray arr = root.getJSONArray("items");
             ArrayList<ArchiveItem> parsed = new ArrayList<ArchiveItem>();
@@ -1874,12 +1956,10 @@ public class MainActivity extends Activity {
                 }
                 parsed.add(item);
             }
-            if (parsed.size() == 0) return false;
-            archiveItems.clear();
-            archiveItems.addAll(parsed);
-            return true;
+            if (parsed.size() == 0) return null;
+            return parsed;
         } catch (Exception e) {
-            return false;
+            return null;
         }
     }
 
@@ -1893,8 +1973,9 @@ public class MainActivity extends Activity {
                     final String hash = sha1(remote);
                     String old = prefs.getString(KEY_REMOTE_HASH, "");
                     if (!hash.equals(old)) {
-                        JSONObject test = new JSONObject(remote);
-                        test.getJSONArray("items");
+                        ArrayList<ArchiveItem> remoteItems = parseArchiveItemsToList(remote);
+                        int localCount = archiveItems.size();
+                        if (remoteItems == null || remoteItems.size() < Math.max(10, (int) (localCount * 0.80f))) throw new Exception("Eksik uzak arşiv verisi");
                         prefs.edit().putString(KEY_REMOTE_JSON, remote).putString(KEY_REMOTE_HASH, hash).putString(KEY_LAST_UPDATE_TEXT, nowText()).apply();
                         handler.post(new Runnable() {
                             @Override public void run() {

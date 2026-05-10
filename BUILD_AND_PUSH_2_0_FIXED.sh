@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="2.1-install-fix"
+VERSION="2.1.2-list-web-fix"
 APK_NAME="BalkesArsivi-v${VERSION}-release.apk"
 
 cat > local.properties <<LOCAL
