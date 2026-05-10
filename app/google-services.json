@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "746095156584",
+    "project_id": "balkes-arsivi",
+    "storage_bucket": "balkes-arsivi.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:746095156584:android:4fb52f0b6d91652216cadd",
+        "android_client_info": {
+          "package_name": "com.sinanjam.arsiv"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCQ7HB7pmQ_mODZIjAVaM9JC_4deMMO1iI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="2.1.2-list-web-fix"
+VERSION="2.1.3-local-archive-fix"
 APK_NAME="BalkesArsivi-v${VERSION}-release.apk"
 
 cat > local.properties <<LOCAL
@@ -41,6 +41,11 @@ APK_PATH="app/build/outputs/apk/release/app-release.apk"
 echo "APK dosyası doğrulanıyor..."
 command -v zip >/dev/null 2>&1 && zip -T "$APK_PATH"
 unzip -l "$APK_PATH" AndroidManifest.xml >/dev/null
+
+echo "archive_items.json asset doğrulanıyor..."
+unzip -l "$APK_PATH" assets/archive/archive_items.json >/dev/null
+unzip -p "$APK_PATH" assets/archive/archive_items.json | head -c 64 | grep -q "items"
+unzip -l "$APK_PATH" assets/archive/archive_items_min.json >/dev/null
 if command -v apksigner >/dev/null 2>&1; then
   apksigner verify --verbose "$APK_PATH" >/dev/null
 elif [ -n "${ANDROID_HOME:-}" ] && [ -x "$ANDROID_HOME/build-tools/35.0.0/apksigner" ]; then

@@ -11,8 +11,8 @@ android {
         applicationId 'com.sinanjam.arsiv'
         minSdk 23
         targetSdk 35
-        versionCode 212
-        versionName '2.1.2-list-web-fix'
+        versionCode 216
+        versionName '2.1.6'
     }
 
     signingConfigs {

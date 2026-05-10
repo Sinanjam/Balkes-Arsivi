@@ -72,6 +72,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -87,15 +88,23 @@ public class MainActivity extends Activity {
     private static final String KEY_LAST_UPDATE_TEXT = "last_update_text";
     private static final String KEY_READER_MODE = "reader_mode";
     private static final String KEY_LAST_VERSION_SEEN = "last_version_seen";
+    private static final String KEY_INSTALLATION_ID = "firebase_installation_id";
+    private static final String KEY_INSTALLATION_CREATED_AT = "firebase_installation_created_at";
+    private static final String KEY_NOTIFICATION_PERMISSION_ASKED = "notification_permission_asked";
     private static final String CHANNEL_ID = "balkes_arsivi_save_channel";
     private static final int REQUEST_WRITE_STORAGE = 2210;
     private static final int REQUEST_NOTIFICATIONS = 2211;
     private static final String GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Sinanjam/Balkes-Arsivi/main/app/src/main/assets/";
     private static final String REMOTE_ARCHIVE_URL = GITHUB_RAW_BASE + "archive/archive_items.json";
-    private static final String APP_VERSION_NAME = "2.0 Final";
+    private static final String APP_VERSION_NAME = "2.1.6";
+    private static final int APP_VERSION_CODE = 216;
     private static final int MAX_INLINE_TABLES = 8;
     private static final int ARCHIVE_PAGE_SIZE = 24;
     private static final String WEB_SITE_URL = "https://sinanjam.github.io/Balkes-Arsivi-Web/";
+    private static final String FIREBASE_PROJECT_ID = "balkes-arsivi";
+    private static final String FIREBASE_API_KEY = "AIzaSyCQ7HB7pmQ_mODZIjAVaM9JC_4deMMO1iI";
+    private static final String FIRESTORE_COLLECTION = "installations";
+    private static final long ACTIVE_USER_WINDOW_MS = 30L * 24L * 60L * 60L * 1000L;
 
     private final ExecutorService imageExecutor = Executors.newFixedThreadPool(2);
     private final ArrayList<ArchiveItem> archiveItems = new ArrayList<ArchiveItem>();
@@ -106,6 +115,7 @@ public class MainActivity extends Activity {
     private int textSizeSp;
     private String screen = "home";
     private String currentQuery = "";
+    private String currentArchiveSection = "balkes";
     private boolean searchTitleOnly = false;
     private boolean searchContentOnly = false;
     private boolean searchWithPhotos = false;
@@ -116,6 +126,8 @@ public class MainActivity extends Activity {
     private int archivePage = 0;
     private boolean pendingPhotoSave;
     private String pendingNotificationLocation;
+    private TextView activeUsersValueView;
+    private volatile boolean archivePreloadStarted = false;
 
     private static class PhotoItem {
         String asset;
@@ -160,21 +172,53 @@ public class MainActivity extends Activity {
         darkTheme = prefs.getBoolean(KEY_DARK, false);
         textSizeSp = prefs.getInt(KEY_TEXT_SIZE, 21);
         createNotificationChannel();
-        showLoadingPage("Balkes Arşivi yükleniyor", "Yerel arşiv hazırlanıyor...");
+        requestNotificationPermissionForUpdates();
+        UpdateCheckReceiver.schedule(this);
+
+        // v2.1.5 Android 12 açılış düzeltmesi:
+        // Yerel arşiv hazırlığı artık ana ekrana geçişi kilitlemez.
+        // Bazı Android 12 cihazlarda JSON/asset hazırlığı takıldığında kullanıcı bu ekranda kalıyordu.
+        showHome();
+        startArchivePreload();
+        registerActiveInstallation(false);
+        handler.postDelayed(new Runnable() {
+            @Override public void run() { showReleaseNotesIfNeeded(); }
+        }, 350);
+        // Güncelleme yönlendirmesi SplashActivity içinde GitHub latest release kontrolüyle yapılır.
+    }
+
+
+    private void startArchivePreload() {
+        if (archivePreloadStarted) return;
+        archivePreloadStarted = true;
         new Thread(new Runnable() {
             @Override public void run() {
-                loadArchiveItems();
-                handler.post(new Runnable() {
-                    @Override public void run() {
-                        showHome();
-                        handler.postDelayed(new Runnable() {
-                            @Override public void run() { showReleaseNotesIfNeeded(); }
-                        }, 350);
-                    }
-                });
+                try {
+                    loadArchiveItems();
+                    handler.post(new Runnable() {
+                        @Override public void run() {
+                            if ("archive_list".equals(screen)) showArchiveList(currentQuery);
+                            else if ("favorites_menu".equals(screen)) showFavoritesMenu();
+                            else if ("favorite_articles".equals(screen)) showFavoriteArticlesList();
+                            else if ("favorite_photos".equals(screen)) showFavoritePhotosList();
+                        }
+                    });
+                } catch (Throwable ignored) {
+                    try {
+                        if (archiveItems.size() == 0) addHardFallbackItems();
+                    } catch (Throwable ignored2) { }
+                }
             }
         }).start();
-        // Güncelleme yönlendirmesi SplashActivity içinde GitHub latest release kontrolüyle yapılır.
+    }
+
+    private void requestNotificationPermissionForUpdates() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+                && !prefs.getBoolean(KEY_NOTIFICATION_PERMISSION_ASKED, false)) {
+            prefs.edit().putBoolean(KEY_NOTIFICATION_PERMISSION_ASKED, true).apply();
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQUEST_NOTIFICATIONS);
+        }
     }
 
     private void showHome() {
@@ -242,6 +286,10 @@ public class MainActivity extends Activity {
         archiveCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveList(""); } });
         content.addView(archiveCard, homeCardParams());
 
+        TextView maratCard = homeCard("Marat10lar Arşivi");
+        maratCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showMaratArchiveList(""); } });
+        content.addView(maratCard, homeCardParams());
+
         TextView favoritesCard = homeCard("Favoriler");
         favoritesCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritesMenu(); } });
         content.addView(favoritesCard, homeCardParams());
@@ -261,17 +309,41 @@ public class MainActivity extends Activity {
         setContentView(root);
     }
 
+    private void showArchivePreparingThenRetry() {
+        showLoadingPage("Balkes Arşivi yükleniyor", "Yerel arşiv hazırlanıyor...");
+        screen = "archive_prepare";
+        startArchivePreload();
+        handler.postDelayed(new Runnable() {
+            @Override public void run() {
+                if (!"archive_prepare".equals(screen)) return;
+                if (archiveItems.size() == 0) {
+                    try {
+                        addHardFallbackItems();
+                        collectAlbumPhotos();
+                    } catch (Throwable ignored) { }
+                }
+                if ("marat10lar".equals(currentArchiveSection)) showMaratArchiveList(currentQuery);
+                else showArchiveList(currentQuery);
+            }
+        }, 2800);
+    }
+
     private void showArchiveList(String query) {
         screen = "archive_list";
         currentItem = null;
         currentPhotoIndex = 0;
         currentQuery = query == null ? "" : query;
+        currentArchiveSection = "balkes";
         archivePage = 0;
         searchTitleOnly = false;
         searchContentOnly = false;
         searchWithPhotos = false;
         searchWithTables = false;
         applyBars();
+        if (archiveItems.size() == 0) {
+            showArchivePreparingThenRetry();
+            return;
+        }
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
@@ -281,6 +353,44 @@ public class MainActivity extends Activity {
 
         root.addView(sectionHeader("Balkes Arşivi"));
         root.addView(descriptionText("Tüm yazılar, fotoğraflar, puan tabloları ve maç skorları tek arşiv akışı içinde listelenir."));
+
+        final LinearLayout results = new LinearLayout(this);
+        results.setOrientation(LinearLayout.VERTICAL);
+        addSearchArea(root, currentQuery, results);
+        root.addView(results, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+        populateArchiveResults(results, false);
+
+        Button home = wideButton("Ana Ekrana Dön");
+        home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
+        root.addView(home, wideButtonParams());
+        setContentView(scrollView);
+    }
+
+    private void showMaratArchiveList(String query) {
+        screen = "marat_archive_list";
+        currentItem = null;
+        currentPhotoIndex = 0;
+        currentQuery = query == null ? "" : query;
+        currentArchiveSection = "marat10lar";
+        archivePage = 0;
+        searchTitleOnly = false;
+        searchContentOnly = false;
+        searchWithPhotos = false;
+        searchWithTables = false;
+        applyBars();
+        if (archiveItems.size() == 0) {
+            showArchivePreparingThenRetry();
+            return;
+        }
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        scrollView.addView(root);
+
+        root.addView(sectionHeader("Marat10lar Arşivi"));
+        root.addView(descriptionText("Marat10lar Arşivi kayıtları ayrı bölüm olarak listelenir; favorilerde Balkes Arşivi kayıtlarıyla birlikte görünür."));
 
         final LinearLayout results = new LinearLayout(this);
         results.setOrientation(LinearLayout.VERTICAL);
@@ -309,6 +419,7 @@ public class MainActivity extends Activity {
         currentItem = null;
         currentPhotoIndex = 0;
         applyBars();
+        ensureArchiveLoaded();
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
@@ -318,7 +429,7 @@ public class MainActivity extends Activity {
         scrollView.addView(root);
 
         root.addView(sectionHeader("Favoriler"));
-        root.addView(descriptionText("Favoriye aldığın fotoğraflar ve yazılar ayrı ayrı burada durur."));
+        root.addView(descriptionText("Favoriye aldığın fotoğraflar ve yazılar burada durur; altında hangi arşivden olduğu yazılır."));
 
         TextView photos = homeCard("Favori Fotoğraflar");
         photos.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritePhotosList(); } });
@@ -340,6 +451,7 @@ public class MainActivity extends Activity {
         currentItem = null;
         currentPhotoIndex = 0;
         applyBars();
+        ensureArchiveLoaded();
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
@@ -376,6 +488,7 @@ public class MainActivity extends Activity {
         currentItem = null;
         currentPhotoIndex = 0;
         applyBars();
+        ensureArchiveLoaded();
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
@@ -412,6 +525,7 @@ public class MainActivity extends Activity {
         currentItem = null;
         currentPhotoIndex = 0;
         applyBars();
+        ensureArchiveLoaded();
 
         ScrollView scrollView = new ScrollView(this);
         scrollView.setFillViewport(true);
@@ -489,7 +603,7 @@ public class MainActivity extends Activity {
         });
         root.addView(image, imageParams());
 
-        root.addView(descriptionText("Fotoğraf " + (currentAlbumIndex + 1) + "/" + albumPhotos.size() + "  •  " + albumPhoto.item.title));
+        root.addView(descriptionText(archiveLabel(albumPhoto.item) + "  •  Fotoğraf " + (currentAlbumIndex + 1) + "/" + albumPhotos.size() + "  •  " + albumPhoto.item.title));
         addPhotoActionRow(root, albumPhoto.photo);
 
         LinearLayout nav = new LinearLayout(this);
@@ -539,6 +653,7 @@ public class MainActivity extends Activity {
 
     private void populateArchiveResults(final LinearLayout results, boolean favoritesOnly) {
         results.removeAllViews();
+        ensureArchiveLoaded();
         final ArrayList<ArchiveItem> filtered = filterItems(currentQuery, favoritesOnly);
         if (filtered.size() == 0) {
             results.addView(emptyState(hasText(currentQuery) ? "Sonuç bulunamadı" : "Arşiv kaydı bulunamadı", hasText(currentQuery) ? "Farklı bir sezon, futbolcu veya skor deneyin." : "Arşiv verisi bu pakette yerel olarak bulunur. Uygulamayı kapatıp açınca yerel veri otomatik tekrar denenir."));
@@ -589,6 +704,20 @@ public class MainActivity extends Activity {
         }
     }
 
+    private void showListForItemSource(ArchiveItem item) {
+        if (item != null && isMaratItem(item)) showMaratArchiveList(currentQuery);
+        else showArchiveList(currentQuery);
+    }
+
+    private boolean isMaratItem(ArchiveItem item) {
+        return item != null && "marat10lar".equalsIgnoreCase(item.sourceType == null ? "" : item.sourceType);
+    }
+
+    private String archiveLabel(ArchiveItem item) {
+        if (isMaratItem(item)) return "Marat10lar Arşivi";
+        return "Balkes Arşivi";
+    }
+
     private void showArchiveDetail(final ArchiveItem item, int photoIndex) {
         screen = "archive_detail";
         currentItem = item;
@@ -603,13 +732,13 @@ public class MainActivity extends Activity {
         LinearLayout root = pageRoot();
         scrollView.addView(root);
 
-        Button back = wideButton("← Balkes Arşivi");
-        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showArchiveList(currentQuery); } });
+        Button back = wideButton("← " + archiveLabel(item));
+        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showListForItemSource(item); } });
         root.addView(back, compactButtonParams());
 
         root.addView(sectionHeader(item.title));
-        String meta = "";
-        if (hasText(item.season)) meta += item.season;
+        String meta = archiveLabel(item);
+        if (hasText(item.season)) meta += " • " + item.season;
         if (item.imageCount > 0) meta += (meta.length() > 0 ? "  •  " : "") + item.imageCount + " fotoğraf";
         if (item.tableCount > 0) meta += (meta.length() > 0 ? "  •  " : "") + item.tableCount + " tablo";
         if (hasText(meta)) root.addView(descriptionText(meta));
@@ -1551,7 +1680,7 @@ public class MainActivity extends Activity {
         if (APP_VERSION_NAME.equals(seen)) return;
         prefs.edit().putString(KEY_LAST_VERSION_SEEN, APP_VERSION_NAME).putBoolean(KEY_READER_MODE, false).apply();
         new AlertDialog.Builder(this)
-                .setTitle("Balkes Arşivi 2.0 Final")
+                .setTitle("Balkes Arşivi 2.1.5")
                 .setMessage("Güncelleme notları:\n\n" +
                         "• Ana ekran sadeleştirildi; Balkes Arşivi, Favoriler ve Uygulama Hakkında kutucukları bırakıldı.\n" +
                         "• Kayıp Sayfalar ayrımı kaldırıldı; tüm içerikler tek ve düz Balkes Arşivi akışında toplandı.\n" +
@@ -1566,7 +1695,11 @@ public class MainActivity extends Activity {
                         "• Eksik fotoğraflar için temsili arşiv görselleri kullanılır ve altında Temsilidir notu görünür.\n" +
                         "• Temsili puan tablosu görselleri dolduruldu ve Temsilidir ibaresi eklendi.\n" +
                         "• Ana ekrana Favoriler kutucuğu eklendi; içinde Favori Fotoğraflar ve Favori Yazılar ayrı seçeneklerdir.\n" +
-                        "• Uygulama açılırken internet varsa GitHub latest release kontrolü yapılır; yeni sürüm varsa GitHub latest release sayfasına yönlendirilir.")
+                        "• Uygulama açılırken internet varsa GitHub latest release kontrolü yapılır; yeni sürüm varsa GitHub latest release sayfasına yönlendirilir.\n" +
+                        "• Uygulama Hakkında bölümüne aktif kullanıcı sayacı eklendi.\n" +
+                        "• 30 dakikada bir GitHub latest release taraması eklendi; yeni sürüm bulunursa bildirim gönderilir.\n" +
+                        "• Android 12'de Yerel arşiv hazırlanıyor ekranında kalma sorunu düzeltildi.\n" +
+                        "• Yerel arşiv hazırlığı artık ana ekranı kilitlemez; arşiv arka planda güvenli şekilde hazırlanır.")
                 .setPositiveButton("Devam", null)
                 .show();
     }
@@ -1602,10 +1735,261 @@ public class MainActivity extends Activity {
         about.setBackground(roundedBox(cardBackground(), accentColor(), dp(18), dp(1)));
         root.addView(about, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
+        root.addView(activeUsersCard(), activeUsersCardParams());
+        refreshActiveUserCount();
+
         Button home = wideButton("Ana Ekrana Dön");
         home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
         root.addView(home, wideButtonParams());
         setContentView(scrollView);
+    }
+
+
+    private View activeUsersCard() {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setGravity(Gravity.CENTER);
+        card.setPadding(dp(18), dp(18), dp(18), dp(18));
+        card.setBackground(roundedBox(cardBackground(), accentColor(), dp(20), dp(1)));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) card.setElevation(dp(3));
+
+        TextView title = new TextView(this);
+        title.setText("Anlık Kullanıcı Sayacı");
+        title.setTextColor(accentColor());
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextSize(17);
+        title.setGravity(Gravity.CENTER);
+        card.addView(title, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        activeUsersValueView = new TextView(this);
+        activeUsersValueView.setText("Yükleniyor...");
+        activeUsersValueView.setTextColor(textColor());
+        activeUsersValueView.setTypeface(Typeface.DEFAULT_BOLD);
+        activeUsersValueView.setTextSize(34);
+        activeUsersValueView.setGravity(Gravity.CENTER);
+        activeUsersValueView.setPadding(0, dp(8), 0, dp(4));
+        card.addView(activeUsersValueView, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        TextView subtitle = new TextView(this);
+        subtitle.setText("Son 30 günde aktif kullanıcı");
+        subtitle.setTextColor(secondaryTextColor());
+        subtitle.setTextSize(13);
+        subtitle.setGravity(Gravity.CENTER);
+        card.addView(subtitle, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        return card;
+    }
+
+    private LinearLayout.LayoutParams activeUsersCardParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, dp(16), 0, dp(2));
+        return lp;
+    }
+
+    private void refreshActiveUserCount() {
+        registerActiveInstallation(true);
+    }
+
+    private void registerActiveInstallation(final boolean updateCountAfterWrite) {
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    String id = installationId();
+                    long createdAt = prefs.getLong(KEY_INSTALLATION_CREATED_AT, 0L);
+                    if (createdAt <= 0L) {
+                        createdAt = System.currentTimeMillis();
+                        prefs.edit().putLong(KEY_INSTALLATION_CREATED_AT, createdAt).apply();
+                    }
+                    String url = firestoreDocumentUrl(id);
+                    JSONObject fields = new JSONObject();
+                    fields.put("installationId", stringField(id));
+                    fields.put("createdAt", integerField(createdAt));
+                    fields.put("lastSeen", integerField(System.currentTimeMillis()));
+                    fields.put("appVersion", stringField(APP_VERSION_NAME));
+                    fields.put("versionCode", integerField(APP_VERSION_CODE));
+                    fields.put("platform", stringField("android"));
+                    JSONObject body = new JSONObject();
+                    body.put("fields", fields);
+                    httpJson("PATCH", url, body.toString());
+                    if (updateCountAfterWrite) updateActiveUserCountFromFirestore();
+                } catch (Throwable e) {
+                    if (updateCountAfterWrite) postActiveUserText("—");
+                }
+            }
+        }).start();
+    }
+
+    private String installationId() {
+        String id = prefs.getString(KEY_INSTALLATION_ID, "");
+        if (!hasText(id)) {
+            id = UUID.randomUUID().toString();
+            prefs.edit().putString(KEY_INSTALLATION_ID, id).putLong(KEY_INSTALLATION_CREATED_AT, System.currentTimeMillis()).apply();
+        }
+        return id;
+    }
+
+    private String firestoreDocumentUrl(String id) throws Exception {
+        return "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID +
+                "/databases/(default)/documents/" + FIRESTORE_COLLECTION + "/" +
+                URLEncoder.encode(id, "UTF-8") + "?key=" + URLEncoder.encode(FIREBASE_API_KEY, "UTF-8");
+    }
+
+    private String firestoreRunAggregationUrl() throws Exception {
+        return "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID +
+                "/databases/(default)/documents:runAggregationQuery?key=" + URLEncoder.encode(FIREBASE_API_KEY, "UTF-8");
+    }
+
+    private JSONObject stringField(String value) throws Exception {
+        JSONObject o = new JSONObject();
+        o.put("stringValue", value == null ? "" : value);
+        return o;
+    }
+
+    private JSONObject integerField(long value) throws Exception {
+        JSONObject o = new JSONObject();
+        o.put("integerValue", String.valueOf(value));
+        return o;
+    }
+
+    private void updateActiveUserCountFromFirestore() {
+        try {
+            long cutoff = System.currentTimeMillis() - ACTIVE_USER_WINDOW_MS;
+            JSONObject body = new JSONObject();
+            JSONObject structuredAggregationQuery = new JSONObject();
+            JSONObject structuredQuery = new JSONObject();
+
+            JSONArray from = new JSONArray();
+            JSONObject collection = new JSONObject();
+            collection.put("collectionId", FIRESTORE_COLLECTION);
+            from.put(collection);
+            structuredQuery.put("from", from);
+
+            JSONObject where = new JSONObject();
+            JSONObject fieldFilter = new JSONObject();
+            JSONObject field = new JSONObject();
+            field.put("fieldPath", "lastSeen");
+            fieldFilter.put("field", field);
+            fieldFilter.put("op", "GREATER_THAN_OR_EQUAL");
+            fieldFilter.put("value", integerField(cutoff));
+            where.put("fieldFilter", fieldFilter);
+            structuredQuery.put("where", where);
+
+            JSONArray aggregations = new JSONArray();
+            JSONObject aggregation = new JSONObject();
+            aggregation.put("count", new JSONObject());
+            aggregation.put("alias", "activeCount");
+            aggregations.put(aggregation);
+
+            structuredAggregationQuery.put("structuredQuery", structuredQuery);
+            structuredAggregationQuery.put("aggregations", aggregations);
+            body.put("structuredAggregationQuery", structuredAggregationQuery);
+
+            String response = httpJson("POST", firestoreRunAggregationUrl(), body.toString());
+            int count = parseAggregationCount(response);
+            if (count < 0) count = countActiveUsersFallback(cutoff);
+            if (count < 0) postActiveUserText("—");
+            else postActiveUserText(String.valueOf(count));
+        } catch (Throwable e) {
+            postActiveUserText("—");
+        }
+    }
+
+    private int parseAggregationCount(String response) {
+        try {
+            JSONArray arr = new JSONArray(response);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject row = arr.optJSONObject(i);
+                if (row == null) continue;
+                JSONObject result = row.optJSONObject("result");
+                if (result == null) continue;
+                JSONObject fields = result.optJSONObject("aggregateFields");
+                if (fields == null) continue;
+                JSONObject active = fields.optJSONObject("activeCount");
+                if (active == null) continue;
+                String val = active.optString("integerValue", "");
+                if (hasText(val)) return Integer.parseInt(val);
+            }
+        } catch (Throwable ignored) { }
+        return -1;
+    }
+
+    private int countActiveUsersFallback(long cutoff) {
+        try {
+            String url = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID +
+                    "/databases/(default)/documents:runQuery?key=" + URLEncoder.encode(FIREBASE_API_KEY, "UTF-8");
+            JSONObject body = new JSONObject();
+            JSONObject structuredQuery = new JSONObject();
+            JSONArray from = new JSONArray();
+            JSONObject collection = new JSONObject();
+            collection.put("collectionId", FIRESTORE_COLLECTION);
+            from.put(collection);
+            structuredQuery.put("from", from);
+            JSONObject where = new JSONObject();
+            JSONObject fieldFilter = new JSONObject();
+            JSONObject field = new JSONObject();
+            field.put("fieldPath", "lastSeen");
+            fieldFilter.put("field", field);
+            fieldFilter.put("op", "GREATER_THAN_OR_EQUAL");
+            fieldFilter.put("value", integerField(cutoff));
+            where.put("fieldFilter", fieldFilter);
+            structuredQuery.put("where", where);
+            JSONObject select = new JSONObject();
+            JSONArray fields = new JSONArray();
+            JSONObject f = new JSONObject();
+            f.put("fieldPath", "installationId");
+            fields.put(f);
+            select.put("fields", fields);
+            structuredQuery.put("select", select);
+            body.put("structuredQuery", structuredQuery);
+            String response = httpJson("POST", url, body.toString());
+            JSONArray arr = new JSONArray(response);
+            int count = 0;
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject row = arr.optJSONObject(i);
+                if (row != null && row.has("document")) count++;
+            }
+            return count;
+        } catch (Throwable ignored) { }
+        return -1;
+    }
+
+    private void postActiveUserText(final String text) {
+        handler.post(new Runnable() {
+            @Override public void run() {
+                if (activeUsersValueView != null) activeUsersValueView.setText(text);
+            }
+        });
+    }
+
+    private String httpJson(String method, String urlText, String body) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(urlText).openConnection();
+        conn.setRequestMethod(method);
+        conn.setConnectTimeout(9000);
+        conn.setReadTimeout(12000);
+        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+        conn.setRequestProperty("Accept", "application/json");
+        conn.setRequestProperty("User-Agent", "BalkesArsivi-Android");
+        conn.setDoInput(true);
+        if (body != null) {
+            conn.setDoOutput(true);
+            byte[] bytes = body.getBytes("UTF-8");
+            OutputStream out = conn.getOutputStream();
+            out.write(bytes);
+            out.flush();
+            out.close();
+        }
+        int code = conn.getResponseCode();
+        InputStream in = code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        if (in != null) {
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = in.read(buffer)) != -1) out.write(buffer, 0, len);
+            in.close();
+        }
+        String response = out.toString("UTF-8");
+        if (code < 200 || code >= 300) throw new Exception("HTTP " + code + ": " + response);
+        return response;
     }
 
     private void askSavePhoto() {
@@ -1849,50 +2233,119 @@ public class MainActivity extends Activity {
         return prefs.getBoolean(KEY_READER_MODE, false);
     }
 
-    private void loadArchiveItems() {
+    private synchronized void loadArchiveItems() {
         archiveItems.clear();
+        try {
+            // v2.1.5 kesin düzeltme:
+            // Eski remote/cache kayıtları açılışı veya arşiv listesini etkileyemez.
+            prefs.edit().remove(KEY_REMOTE_JSON).remove(KEY_REMOTE_HASH).apply();
 
-        ArrayList<ArchiveItem> localItems = null;
-        ArrayList<ArchiveItem> cachedItems = null;
+            ArrayList<ArchiveItem> localItems = readBestLocalArchiveItems();
+            if (isHealthyArchiveList(localItems)) {
+                archiveItems.addAll(localItems);
+                appendMarat10larItems();
+            } else {
+                ArrayList<ArchiveItem> emergency = readEmergencyArchiveItems();
+                if (isHealthyArchiveList(emergency) || (emergency != null && emergency.size() > 0)) {
+                    archiveItems.addAll(emergency);
+                    appendMarat10larItems();
+                } else {
+                    addHardFallbackItems();
+                    appendMarat10larItems();
+                }
+            }
+        } catch (Throwable e) {
+            archiveItems.clear();
+            try { addHardFallbackItems(); appendMarat10larItems(); } catch (Throwable ignored) { }
+        }
 
         try {
-            localItems = parseArchiveItemsToList(readAssetText("archive/archive_items.json"));
-        } catch (Exception ignored) { }
-
-        String cached = prefs.getString(KEY_REMOTE_JSON, "");
-        if (hasText(cached)) {
-            cachedItems = parseArchiveItemsToList(cached);
+            collectAlbumPhotos();
+        } catch (Throwable e) {
+            albumPhotos.clear();
         }
-
-        ArrayList<ArchiveItem> selected = chooseBestArchiveList(localItems, cachedItems);
-        if (selected != null && selected.size() > 0) {
-            archiveItems.addAll(selected);
-        } else {
-            ArchiveItem item = new ArchiveItem();
-            item.id = "balkes_arsivi_yerel_veri_bekleniyor";
-            item.title = "Balkes Arşivi";
-            item.summary = "Arşiv verisi bu pakette yerel olarak bulunur. Uygulamayı kapatıp yeniden açmayı deneyin.";
-            item.content = "Arşiv verisi bu pakette yerel olarak bulunur. Uygulamayı kapatıp yeniden açmayı deneyin.";
-            archiveItems.add(item);
-        }
-        collectAlbumPhotos();
     }
 
-    private ArrayList<ArchiveItem> chooseBestArchiveList(ArrayList<ArchiveItem> localItems, ArrayList<ArchiveItem> cachedItems) {
-        int localCount = localItems == null ? 0 : localItems.size();
-        int cachedCount = cachedItems == null ? 0 : cachedItems.size();
+    private void appendMarat10larItems() {
+        try {
+            ArrayList<ArchiveItem> maratItems = parseArchiveItemsToList(readAssetText("archive/marat10lar_items.json"));
+            if (maratItems == null || maratItems.size() == 0) return;
+            HashSet<String> ids = new HashSet<String>();
+            for (int i = 0; i < archiveItems.size(); i++) ids.add(archiveItems.get(i).id);
+            for (int i = 0; i < maratItems.size(); i++) {
+                ArchiveItem item = maratItems.get(i);
+                item.sourceType = "marat10lar";
+                if (!hasText(item.season)) item.season = "Marat10lar Arşivi";
+                if (!ids.contains(item.id)) {
+                    archiveItems.add(item);
+                    ids.add(item.id);
+                }
+            }
+        } catch (Throwable ignored) { }
+    }
 
-        if (localCount == 0 && cachedCount > 0) return cachedItems;
-        if (localCount > 0 && cachedCount == 0) return localItems;
-        if (localCount == 0) return null;
+    private void ensureArchiveLoaded() {
+        if (archiveItems.size() > 0) return;
+        try {
+            loadArchiveItems();
+        } catch (Throwable e) {
+            if (archiveItems.size() == 0) {
+                try { addHardFallbackItems(); appendMarat10larItems(); } catch (Throwable ignored) { }
+            }
+        }
+    }
 
-        // Bazı güncellemelerden sonra eski SharedPreferences içinde eksik/yarım uzaktan JSON kalabiliyor.
-        // Bu durumda boş liste hatası olmaması için paket içindeki tam yerel arşiv her zaman güvenli kaynak kabul edilir.
-        int minimumSafeRemote = Math.max(10, (int) (localCount * 0.80f));
-        if (cachedCount >= minimumSafeRemote) return cachedItems;
+    private ArrayList<ArchiveItem> readBestLocalArchiveItems() {
+        String[] paths = new String[]{
+                "archive/archive_items.json",
+                "archive_items.json"
+        };
+        for (int i = 0; i < paths.length; i++) {
+            try {
+                ArrayList<ArchiveItem> items = parseArchiveItemsToList(readAssetText(paths[i]));
+                if (isHealthyArchiveList(items)) return items;
+            } catch (Throwable ignored) { }
+        }
+        return null;
+    }
 
-        prefs.edit().remove(KEY_REMOTE_JSON).remove(KEY_REMOTE_HASH).apply();
-        return localItems;
+    private ArrayList<ArchiveItem> readEmergencyArchiveItems() {
+        String[] paths = new String[]{
+                "archive/archive_items_min.json",
+                "archive/archive_items.json"
+        };
+        for (int i = 0; i < paths.length; i++) {
+            try {
+                ArrayList<ArchiveItem> items = parseArchiveItemsToList(readAssetText(paths[i]));
+                if (items != null && items.size() > 0) return items;
+            } catch (Throwable ignored) { }
+        }
+        return null;
+    }
+
+    private boolean isHealthyArchiveList(ArrayList<ArchiveItem> items) {
+        return items != null && items.size() >= 10;
+    }
+
+    private void addHardFallbackItems() {
+        archiveItems.clear();
+        String[][] rows = new String[][]{
+                {"balikesirspor-1990-91-sezonu-arsivi", "Balıkesirspor 1990-91 Sezonu Arşivi", "1990-91"},
+                {"balikesirspor-1989-90-sezonu-arsivi", "Balıkesirspor 1989-90 Sezonu Arşivi", "1989-90"},
+                {"balikesirspor-1988-89-sezonu-arsivi", "Balıkesirspor 1988-89 Sezonu Arşivi", "1988-89"},
+                {"tum-zamanlar-takimlar-siralamasi", "Tüm Zamanlar Takımlar Sıralaması", ""},
+                {"balkes-arsivi-web", "Balkes Arşivi Web Sitesi", ""}
+        };
+        for (int i = 0; i < rows.length; i++) {
+            ArchiveItem item = new ArchiveItem();
+            item.id = rows[i][0];
+            item.title = rows[i][1];
+            item.season = rows[i][2];
+            item.summary = "Yerel arşiv verisi bu cihazda yeniden yüklenemediği için güvenli kurtarma kaydı gösteriliyor.";
+            item.content = "Yerel arşiv verisi bu cihazda yeniden yüklenemedi. Uygulamanın en güncel sürümünü kurduğunda tam arşiv otomatik gelir. Web sitesi: " + WEB_SITE_URL;
+            item.imageAsset = fallbackVisualForItem(item);
+            archiveItems.add(item);
+        }
     }
 
     private boolean parseArchiveItems(String json) {
@@ -1904,61 +2357,66 @@ public class MainActivity extends Activity {
     }
 
     private ArrayList<ArchiveItem> parseArchiveItemsToList(String json) {
+        if (!hasText(json)) return null;
+        ArrayList<ArchiveItem> parsed = new ArrayList<ArchiveItem>();
         try {
-            if (!hasText(json)) return null;
             JSONObject root = new JSONObject(json);
-            JSONArray arr = root.getJSONArray("items");
-            ArrayList<ArchiveItem> parsed = new ArrayList<ArchiveItem>();
+            JSONArray arr = root.optJSONArray("items");
+            if (arr == null) return null;
             for (int i = 0; i < arr.length(); i++) {
-                JSONObject o = arr.getJSONObject(i);
-                ArchiveItem item = new ArchiveItem();
-                item.id = o.optString("id");
-                item.title = cleanTitleForDisplay(o.optString("title"));
-                String lowerId = item.id == null ? "" : item.id.toLowerCase(Locale.ROOT);
-                String lowerTitle = item.title == null ? "" : item.title.toLowerCase(new Locale("tr", "TR"));
-                if (lowerId.contains("ziyaretci-defteri") || lowerTitle.contains("ziyaretçi defteri") || lowerTitle.contains("ziyaretci defteri")) continue;
-                item.season = o.optString("season");
-                item.summary = o.optString("summary");
-                item.content = o.optString("content");
-                item.sourceUrl = o.optString("sourceUrl");
-                item.sourceType = o.optString("sourceType");
-                item.imageAsset = o.optString("imageAsset");
-                item.imageCaption = o.optString("imageCaption");
-                item.tables = o.optString("tables");
-                item.tableCount = o.optInt("tableCount", 0);
-                item.imageCount = o.optInt("imageCount", 0);
-                JSONArray photos = o.optJSONArray("photos");
-                if (photos != null) {
-                    for (int p = 0; p < photos.length(); p++) {
-                        JSONObject po = photos.getJSONObject(p);
-                        PhotoItem photo = new PhotoItem();
-                        photo.asset = po.optString("asset");
-                        photo.caption = cleanReaderText(po.optString("caption"));
-                        photo.sourceUrl = po.optString("sourceUrl");
-                        if (hasText(photo.asset)) item.photos.add(photo);
+                try {
+                    JSONObject o = arr.optJSONObject(i);
+                    if (o == null) continue;
+                    ArchiveItem item = new ArchiveItem();
+                    item.id = o.optString("id");
+                    item.title = cleanTitleForDisplay(o.optString("title"));
+                    String lowerId = item.id == null ? "" : item.id.toLowerCase(Locale.ROOT);
+                    String lowerTitle = item.title == null ? "" : item.title.toLowerCase(new Locale("tr", "TR"));
+                    if (lowerId.contains("ziyaretci-defteri") || lowerTitle.contains("ziyaretçi defteri") || lowerTitle.contains("ziyaretci defteri")) continue;
+                    item.season = o.optString("season");
+                    item.summary = o.optString("summary");
+                    item.content = o.optString("content");
+                    item.sourceUrl = o.optString("sourceUrl");
+                    item.sourceType = o.optString("sourceType");
+                    item.imageAsset = o.optString("imageAsset");
+                    item.imageCaption = o.optString("imageCaption");
+                    item.tables = o.optString("tables");
+                    item.tableCount = o.optInt("tableCount", 0);
+                    item.imageCount = o.optInt("imageCount", 0);
+                    JSONArray photos = o.optJSONArray("photos");
+                    if (photos != null) {
+                        for (int p = 0; p < photos.length(); p++) {
+                            try {
+                                JSONObject po = photos.optJSONObject(p);
+                                if (po == null) continue;
+                                PhotoItem photo = new PhotoItem();
+                                photo.asset = po.optString("asset");
+                                photo.caption = cleanReaderText(po.optString("caption"));
+                                photo.sourceUrl = po.optString("sourceUrl");
+                                if (hasText(photo.asset)) item.photos.add(photo);
+                            } catch (Throwable ignoredPhoto) { }
+                        }
                     }
-                }
-                if (item.photos.size() == 0 && hasText(item.imageAsset)) {
-                    PhotoItem photo = new PhotoItem();
-                    photo.asset = item.imageAsset;
-                    photo.caption = cleanReaderText(item.imageCaption);
-                    item.photos.add(photo);
-                }
-                if (!hasText(item.id)) item.id = safeId(item.title + "_" + i);
-                if (!hasText(item.title)) item.title = "Balkes Arşivi";
-                if (!hasText(item.summary)) item.summary = item.content;
-                if (!hasText(item.content)) item.content = item.summary;
-                item.content = cleanupArticleContent(item.title, item.content);
-                String cleanedSummary = cleanupArticleContent(item.title, item.summary);
-                item.summary = makeSnippet(hasText(cleanedSummary) && cleanedSummary.length() > 35 ? cleanedSummary : item.content, 220);
-                for (int p = 0; p < item.photos.size(); p++) {
-                    item.photos.get(p).caption = cleanReaderText(item.photos.get(p).caption);
-                }
-                parsed.add(item);
+                    if (item.photos.size() == 0 && hasText(item.imageAsset)) {
+                        PhotoItem photo = new PhotoItem();
+                        photo.asset = item.imageAsset;
+                        photo.caption = cleanReaderText(item.imageCaption);
+                        item.photos.add(photo);
+                    }
+                    if (!hasText(item.id)) item.id = safeId(item.title + "_" + i);
+                    if (!hasText(item.title)) item.title = "Balkes Arşivi";
+                    if (!hasText(item.summary)) item.summary = item.content;
+                    if (!hasText(item.content)) item.content = item.summary;
+                    item.content = cleanupArticleContent(item.title, item.content);
+                    String cleanedSummary = cleanupArticleContent(item.title, item.summary);
+                    item.summary = makeSnippet(hasText(cleanedSummary) && cleanedSummary.length() > 35 ? cleanedSummary : item.content, 220);
+                    for (int p = 0; p < item.photos.size(); p++) item.photos.get(p).caption = cleanReaderText(item.photos.get(p).caption);
+                    parsed.add(item);
+                } catch (Throwable ignoredItem) { }
             }
             if (parsed.size() == 0) return null;
             return parsed;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return null;
         }
     }
@@ -1976,7 +2434,7 @@ public class MainActivity extends Activity {
                         ArrayList<ArchiveItem> remoteItems = parseArchiveItemsToList(remote);
                         int localCount = archiveItems.size();
                         if (remoteItems == null || remoteItems.size() < Math.max(10, (int) (localCount * 0.80f))) throw new Exception("Eksik uzak arşiv verisi");
-                        prefs.edit().putString(KEY_REMOTE_JSON, remote).putString(KEY_REMOTE_HASH, hash).putString(KEY_LAST_UPDATE_TEXT, nowText()).apply();
+                        prefs.edit().remove(KEY_REMOTE_JSON).remove(KEY_REMOTE_HASH).putString(KEY_LAST_UPDATE_TEXT, nowText()).apply();
                         handler.post(new Runnable() {
                             @Override public void run() {
                                 loadArchiveItems();
@@ -2032,6 +2490,13 @@ public class MainActivity extends Activity {
         for (int i = 0; i < archiveItems.size(); i++) {
             ArchiveItem item = archiveItems.get(i);
             if (favoritesOnly && !isFavorite(item.id)) continue;
+            if (!favoritesOnly) {
+                if ("marat10lar".equals(currentArchiveSection)) {
+                    if (!isMaratItem(item)) continue;
+                } else {
+                    if (isMaratItem(item)) continue;
+                }
+            }
             if (searchWithPhotos && item.imageCount <= 0 && item.photos.size() == 0) continue;
             if (searchWithTables && item.tableCount <= 0) continue;
             String haystack;
@@ -2044,7 +2509,7 @@ public class MainActivity extends Activity {
     }
 
     private String searchableText(ArchiveItem item) {
-        return ((item.title == null ? "" : item.title) + " " +
+        return (archiveLabel(item) + " " + (item.title == null ? "" : item.title) + " " +
                 (item.season == null ? "" : item.season) + " " +
                 (item.summary == null ? "" : item.summary) + " " +
                 (item.content == null ? "" : item.content)).toLowerCase(new Locale("tr", "TR"));
@@ -2126,7 +2591,7 @@ public class MainActivity extends Activity {
     private String readAssetText(String path) throws Exception {
         InputStream in = getAssets().open(path);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        byte[] buffer = new byte[4096];
+        byte[] buffer = new byte[32768];
         int len;
         while ((len = in.read(buffer)) != -1) out.write(buffer, 0, len);
         in.close();
@@ -2248,7 +2713,7 @@ public class MainActivity extends Activity {
         title.setMaxLines(2);
         texts.addView(title);
         TextView meta = new TextView(this);
-        meta.setText("Fotoğraf " + (ap.photoIndex + 1) + "/" + Math.max(1, ap.item.photos.size()));
+        meta.setText(archiveLabel(ap.item) + " • Fotoğraf " + (ap.photoIndex + 1) + "/" + Math.max(1, ap.item.photos.size()));
         meta.setTextColor(accentColor());
         meta.setTypeface(Typeface.DEFAULT_BOLD);
         meta.setTextSize(13);
@@ -2307,8 +2772,8 @@ public class MainActivity extends Activity {
         title.setMaxLines(2);
         texts.addView(title, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
 
-        String meta = "";
-        if (hasText(item.season)) meta += item.season;
+        String meta = archiveLabel(item);
+        if (hasText(item.season)) meta += " • " + item.season;
         if (item.imageCount > 0) meta += (meta.length() > 0 ? " • " : "") + item.imageCount + " foto";
         if (item.tableCount > 0) meta += (meta.length() > 0 ? " • " : "") + item.tableCount + " tablo";
         if (hasText(meta)) {
