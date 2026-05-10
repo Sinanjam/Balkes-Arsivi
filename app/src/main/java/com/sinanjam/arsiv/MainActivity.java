@@ -96,19 +96,25 @@ public class MainActivity extends Activity {
     private static final int REQUEST_NOTIFICATIONS = 2211;
     private static final String GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Sinanjam/Balkes-Arsivi/main/app/src/main/assets/";
     private static final String REMOTE_ARCHIVE_URL = GITHUB_RAW_BASE + "archive/archive_items.json";
-    private static final String APP_VERSION_NAME = "2.1.6";
-    private static final int APP_VERSION_CODE = 216;
+    private static final String APP_VERSION_NAME = "2.2";
+    private static final int APP_VERSION_CODE = 220;
     private static final int MAX_INLINE_TABLES = 8;
     private static final int ARCHIVE_PAGE_SIZE = 24;
     private static final String WEB_SITE_URL = "https://sinanjam.github.io/Balkes-Arsivi-Web/";
     private static final String FIREBASE_PROJECT_ID = "balkes-arsivi";
     private static final String FIREBASE_API_KEY = "AIzaSyCQ7HB7pmQ_mODZIjAVaM9JC_4deMMO1iI";
     private static final String FIRESTORE_COLLECTION = "installations";
+    private static final String FIRESTORE_SUBMISSIONS_COLLECTION = "submissions";
+    private static final String KEY_FIREBASE_AUTH_UID = "firebase_auth_uid";
+    private static final String KEY_FIREBASE_AUTH_TOKEN = "firebase_auth_token";
+    private static final String KEY_FIREBASE_AUTH_EXPIRES_AT = "firebase_auth_expires_at";
     private static final long ACTIVE_USER_WINDOW_MS = 30L * 24L * 60L * 60L * 1000L;
 
     private final ExecutorService imageExecutor = Executors.newFixedThreadPool(2);
     private final ArrayList<ArchiveItem> archiveItems = new ArrayList<ArchiveItem>();
     private final ArrayList<AlbumPhoto> albumPhotos = new ArrayList<AlbumPhoto>();
+    private final ArrayList<UserSubmission> userSubmissions = new ArrayList<UserSubmission>();
+    private boolean userSubmissionsLoading = false;
     private SharedPreferences prefs;
     private Handler handler;
     private boolean darkTheme;
@@ -156,6 +162,16 @@ public class MainActivity extends Activity {
         int tableCount;
         int imageCount;
         ArrayList<PhotoItem> photos = new ArrayList<PhotoItem>();
+    }
+
+    private static class UserSubmission {
+        String id;
+        String title;
+        String body;
+        String authorName;
+        String photoPath;
+        String photoUrl;
+        long createdAt;
     }
 
     private static class ArticleTable {
@@ -290,6 +306,10 @@ public class MainActivity extends Activity {
         maratCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showMaratArchiveList(""); } });
         content.addView(maratCard, homeCardParams());
 
+        TextView submissionsCard = homeCard("Sizden Gelenler");
+        submissionsCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSubmissionsList(); } });
+        content.addView(submissionsCard, homeCardParams());
+
         TextView favoritesCard = homeCard("Favoriler");
         favoritesCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showFavoritesMenu(); } });
         content.addView(favoritesCard, homeCardParams());
@@ -411,6 +431,294 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             Toast.makeText(this, "Bağlantı açılamadı.", Toast.LENGTH_LONG).show();
         }
+    }
+
+
+    private void showSubmissionsList() {
+        screen = "submissions";
+        currentItem = null;
+        currentPhotoIndex = 0;
+        applyBars();
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        root.setGravity(Gravity.CENTER_HORIZONTAL);
+        scrollView.addView(root);
+
+        root.addView(sectionHeader("Sizden Gelenler"));
+        root.addView(descriptionText("Gönderilen yazılar incelendikten sonra burada yayınlanır."));
+
+        TextView sendCard = homeCard("Yazı Gönder");
+        sendCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSubmissionForm(); } });
+        root.addView(sendCard, homeCardParams());
+
+        final LinearLayout list = new LinearLayout(this);
+        list.setOrientation(LinearLayout.VERTICAL);
+        root.addView(list, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        if (userSubmissions.size() == 0) {
+            list.addView(descriptionText(userSubmissionsLoading ? "Yükleniyor..." : "Henüz yayınlanan yazı yok."));
+        } else {
+            for (int i = 0; i < userSubmissions.size(); i++) {
+                final UserSubmission sub = userSubmissions.get(i);
+                View card = submissionListCard(sub);
+                card.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSubmissionDetail(sub); } });
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                lp.setMargins(0, 0, 0, dp(12));
+                list.addView(card, lp);
+            }
+        }
+
+        Button refresh = wideButton("Yenile");
+        refresh.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { loadApprovedSubmissions(true); } });
+        root.addView(refresh, wideButtonParams());
+
+        Button home = wideButton("Ana Ekrana Dön");
+        home.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showHome(); } });
+        root.addView(home, wideButtonParams());
+        setContentView(scrollView);
+
+        if (!userSubmissionsLoading) loadApprovedSubmissions(false);
+    }
+
+    private View submissionListCard(UserSubmission sub) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(dp(10), dp(10), dp(10), dp(10));
+        card.setBackground(roundedBox(cardBackground(), accentColor(), dp(16), dp(1)));
+        card.setClickable(true);
+        card.setFocusable(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) card.setElevation(dp(2));
+
+        ImageView thumb = new ImageView(this);
+        setImageFromPath(thumb, "generated/arsiv_temsili_1966.png", R.drawable.sample_photo);
+        thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        LinearLayout.LayoutParams thumbParams = new LinearLayout.LayoutParams(dp(100), dp(82));
+        thumbParams.setMargins(0, 0, dp(12), 0);
+        card.addView(thumb, thumbParams);
+
+        LinearLayout texts = new LinearLayout(this);
+        texts.setOrientation(LinearLayout.VERTICAL);
+        TextView title = new TextView(this);
+        title.setText(sub.title);
+        title.setTextColor(textColor());
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextSize(16);
+        title.setMaxLines(2);
+        texts.addView(title);
+
+        TextView meta = new TextView(this);
+        meta.setText("Sizden Gelenler" + (hasText(sub.authorName) ? " • " + sub.authorName : ""));
+        meta.setTextColor(accentColor());
+        meta.setTypeface(Typeface.DEFAULT_BOLD);
+        meta.setTextSize(13);
+        texts.addView(meta);
+
+        TextView snippet = new TextView(this);
+        snippet.setText(makeSnippet(sub.body, 125));
+        snippet.setTextColor(secondaryTextColor());
+        snippet.setTextSize(13);
+        snippet.setLineSpacing(0, 1.08f);
+        snippet.setMaxLines(3);
+        texts.addView(snippet);
+
+        card.addView(texts, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        return card;
+    }
+
+    private void showSubmissionDetail(final UserSubmission sub) {
+        screen = "submission_detail";
+        applyBars();
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        scrollView.addView(root);
+
+        Button back = wideButton("← Sizden Gelenler");
+        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSubmissionsList(); } });
+        root.addView(back, wideButtonParams());
+
+        root.addView(sectionHeader(sub.title));
+        if (hasText(sub.authorName)) root.addView(descriptionText(sub.authorName));
+
+        ImageView image = new ImageView(this);
+        setImageFromPath(image, "generated/arsiv_temsili_1966.png", R.drawable.sample_photo);
+        image.setAdjustViewBounds(false);
+        image.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        root.addView(image, imageParams());
+        root.addView(descriptionText("Temsilidir"));
+
+        TextView body = new TextView(this);
+        body.setText(cleanReaderText(sub.body));
+        body.setTextColor(textColor());
+        body.setTextSize(textSizeSp);
+        body.setLineSpacing(0, 1.22f);
+        body.setPadding(dp(18), dp(18), dp(18), dp(18));
+        body.setBackground(roundedBox(cardBackground(), subtleStrokeColor(), dp(18), dp(1)));
+        root.addView(body, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT));
+
+        setContentView(scrollView);
+    }
+
+    private void showSubmissionForm() {
+        screen = "submission_form";
+        applyBars();
+
+        ScrollView scrollView = new ScrollView(this);
+        scrollView.setFillViewport(true);
+        scrollView.setBackgroundColor(pageBackground());
+        LinearLayout root = pageRoot();
+        scrollView.addView(root);
+
+        root.addView(sectionHeader("Yazı Gönder"));
+        root.addView(descriptionText("Gönderiniz incelendikten sonra yayınlanacaktır."));
+
+        final EditText titleInput = formInput("Başlık");
+        final EditText authorInput = formInput("Rumuz");
+        final EditText bodyInput = formInput("Yazı");
+        bodyInput.setMinLines(6);
+        bodyInput.setGravity(Gravity.TOP | Gravity.START);
+
+        root.addView(titleInput, formInputParams());
+        root.addView(authorInput, formInputParams());
+        root.addView(bodyInput, formInputParams());
+
+        Button send = wideButton("Gönder");
+        send.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                String title = titleInput.getText().toString().trim();
+                String author = authorInput.getText().toString().trim();
+                String body = bodyInput.getText().toString().trim();
+                if (title.length() < 3) { Toast.makeText(MainActivity.this, "Başlık çok kısa.", Toast.LENGTH_LONG).show(); return; }
+                if (body.length() < 10) { Toast.makeText(MainActivity.this, "Yazı çok kısa.", Toast.LENGTH_LONG).show(); return; }
+                if (author.length() > 60) { Toast.makeText(MainActivity.this, "Rumuz çok uzun.", Toast.LENGTH_LONG).show(); return; }
+                submitUserSubmission(title, body, author);
+            }
+        });
+        root.addView(send, wideButtonParams());
+
+        Button back = wideButton("Sizden Gelenler'e Dön");
+        back.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { showSubmissionsList(); } });
+        root.addView(back, wideButtonParams());
+
+        setContentView(scrollView);
+    }
+
+    private EditText formInput(String hint) {
+        EditText input = new EditText(this);
+        input.setHint(hint);
+        input.setTextColor(textColor());
+        input.setHintTextColor(secondaryTextColor());
+        input.setTextSize(16);
+        input.setPadding(dp(14), dp(12), dp(14), dp(12));
+        input.setBackground(roundedBox(cardBackground(), subtleStrokeColor(), dp(16), dp(1)));
+        return input;
+    }
+
+    private LinearLayout.LayoutParams formInputParams() {
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        lp.setMargins(0, 0, 0, dp(12));
+        return lp;
+    }
+
+    private void loadApprovedSubmissions(final boolean showToast) {
+        userSubmissionsLoading = true;
+        if (showToast) Toast.makeText(this, "Yenileniyor...", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+            @Override public void run() {
+                final ArrayList<UserSubmission> loaded = new ArrayList<UserSubmission>();
+                try {
+                    JSONObject body = new JSONObject();
+                    JSONObject structuredQuery = new JSONObject();
+                    JSONArray from = new JSONArray();
+                    JSONObject collection = new JSONObject();
+                    collection.put("collectionId", FIRESTORE_SUBMISSIONS_COLLECTION);
+                    from.put(collection);
+                    structuredQuery.put("from", from);
+
+                    JSONObject where = new JSONObject();
+                    JSONObject fieldFilter = new JSONObject();
+                    JSONObject field = new JSONObject();
+                    field.put("fieldPath", "status");
+                    fieldFilter.put("field", field);
+                    fieldFilter.put("op", "EQUAL");
+                    fieldFilter.put("value", stringField("approved"));
+                    where.put("fieldFilter", fieldFilter);
+                    structuredQuery.put("where", where);
+                    body.put("structuredQuery", structuredQuery);
+
+                    String response = httpJson("POST", firestoreRunQueryUrl(), body.toString());
+                    JSONArray arr = new JSONArray(response);
+                    for (int i = 0; i < arr.length(); i++) {
+                        JSONObject row = arr.optJSONObject(i);
+                        if (row == null) continue;
+                        JSONObject doc = row.optJSONObject("document");
+                        if (doc == null) continue;
+                        JSONObject fields = doc.optJSONObject("fields");
+                        if (fields == null) continue;
+                        UserSubmission sub = new UserSubmission();
+                        sub.id = doc.optString("name", "");
+                        sub.title = getStringField(fields, "title");
+                        sub.body = getStringField(fields, "body");
+                        sub.authorName = getStringField(fields, "authorName");
+                        sub.photoPath = getStringField(fields, "photoPath");
+                        sub.photoUrl = getStringField(fields, "photoUrl");
+                        sub.createdAt = getLongField(fields, "createdAt");
+                        if (hasText(sub.title) && hasText(sub.body)) loaded.add(sub);
+                    }
+                } catch (Throwable ignored) { }
+                handler.post(new Runnable() {
+                    @Override public void run() {
+                        userSubmissionsLoading = false;
+                        userSubmissions.clear();
+                        userSubmissions.addAll(loaded);
+                        if ("submissions".equals(screen)) showSubmissionsList();
+                        if (showToast && loaded.size() == 0) Toast.makeText(MainActivity.this, "Yayınlanan yazı bulunamadı.", Toast.LENGTH_LONG).show();
+                    }
+                });
+            }
+        }).start();
+    }
+
+    private void submitUserSubmission(final String title, final String bodyText, final String authorName) {
+        Toast.makeText(this, "Gönderiliyor...", Toast.LENGTH_SHORT).show();
+        new Thread(new Runnable() {
+            @Override public void run() {
+                try {
+                    String uid = firebaseUid();
+                    String token = firebaseAuthToken();
+                    String docId = UUID.randomUUID().toString();
+                    JSONObject fields = new JSONObject();
+                    fields.put("title", stringField(title));
+                    fields.put("body", stringField(bodyText));
+                    fields.put("authorName", stringField(authorName));
+                    fields.put("photoPath", stringField(""));
+                    fields.put("photoUrl", stringField(""));
+                    fields.put("status", stringField("pending"));
+                    fields.put("uid", stringField(uid));
+                    fields.put("createdAt", integerField(System.currentTimeMillis()));
+                    fields.put("appVersion", stringField(APP_VERSION_NAME));
+                    fields.put("versionCode", integerField(APP_VERSION_CODE));
+                    fields.put("platform", stringField("android"));
+                    JSONObject request = new JSONObject();
+                    request.put("fields", fields);
+                    httpJsonAuth("PATCH", firestoreSubmissionDocumentUrl(docId), request.toString(), token);
+                    handler.post(new Runnable() { @Override public void run() {
+                        Toast.makeText(MainActivity.this, "Gönderiniz alındı. Onaylandıktan sonra yayınlanacaktır.", Toast.LENGTH_LONG).show();
+                        showSubmissionsList();
+                    }});
+                } catch (Throwable e) {
+                    handler.post(new Runnable() { @Override public void run() {
+                        Toast.makeText(MainActivity.this, "Gönderi alınamadı. İnternet bağlantını kontrol et.", Toast.LENGTH_LONG).show();
+                    }});
+                }
+            }
+        }).start();
     }
 
     private void showFavoritesMenu() {
@@ -1680,9 +1988,11 @@ public class MainActivity extends Activity {
         if (APP_VERSION_NAME.equals(seen)) return;
         prefs.edit().putString(KEY_LAST_VERSION_SEEN, APP_VERSION_NAME).putBoolean(KEY_READER_MODE, false).apply();
         new AlertDialog.Builder(this)
-                .setTitle("Balkes Arşivi 2.1.5")
+                .setTitle("Balkes Arşivi 2.2")
                 .setMessage("Güncelleme notları:\n\n" +
-                        "• Ana ekran sadeleştirildi; Balkes Arşivi, Favoriler ve Uygulama Hakkında kutucukları bırakıldı.\n" +
+                        "• Sizden Gelenler bölümü eklendi.\n" +
+                        "• Kullanıcıların yazı gönderebilmesi sağlandı.\n" +
+                        "• Gönderiler manuel onaydan sonra yayınlanacak şekilde hazırlandı.\n" +
                         "• Kayıp Sayfalar ayrımı kaldırıldı; tüm içerikler tek ve düz Balkes Arşivi akışında toplandı.\n" +
                         "• PDF/dergi tarzı okuma sayfası eklendi; görseller artık üstte yığılmadan metnin arasında gösterilir.\n" +
                         "• Fotoğraflara uzun basınca kaydetme/paylaşma/favoriye alma akışı korunur.\n" +
@@ -1992,6 +2302,102 @@ public class MainActivity extends Activity {
         return response;
     }
 
+
+    private String firestoreRunQueryUrl() throws Exception {
+        return "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID +
+                "/databases/(default)/documents:runQuery?key=" + URLEncoder.encode(FIREBASE_API_KEY, "UTF-8");
+    }
+
+    private String firestoreSubmissionDocumentUrl(String id) throws Exception {
+        return "https://firestore.googleapis.com/v1/projects/" + FIREBASE_PROJECT_ID +
+                "/databases/(default)/documents/" + FIRESTORE_SUBMISSIONS_COLLECTION + "/" +
+                URLEncoder.encode(id, "UTF-8") + "?key=" + URLEncoder.encode(FIREBASE_API_KEY, "UTF-8");
+    }
+
+    private String firebaseUid() throws Exception {
+        ensureFirebaseAuth();
+        return prefs.getString(KEY_FIREBASE_AUTH_UID, "");
+    }
+
+    private String firebaseAuthToken() throws Exception {
+        ensureFirebaseAuth();
+        return prefs.getString(KEY_FIREBASE_AUTH_TOKEN, "");
+    }
+
+    private void ensureFirebaseAuth() throws Exception {
+        String token = prefs.getString(KEY_FIREBASE_AUTH_TOKEN, "");
+        String uid = prefs.getString(KEY_FIREBASE_AUTH_UID, "");
+        long expiresAt = prefs.getLong(KEY_FIREBASE_AUTH_EXPIRES_AT, 0L);
+        if (hasText(token) && hasText(uid) && System.currentTimeMillis() < expiresAt) return;
+
+        String url = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=" + URLEncoder.encode(FIREBASE_API_KEY, "UTF-8");
+        JSONObject req = new JSONObject();
+        req.put("returnSecureToken", true);
+        String response = httpJson("POST", url, req.toString());
+        JSONObject obj = new JSONObject(response);
+        String idToken = obj.optString("idToken", "");
+        String localId = obj.optString("localId", "");
+        long expiresIn = 3600L;
+        try { expiresIn = Long.parseLong(obj.optString("expiresIn", "3600")); } catch (Throwable ignored) { }
+        if (!hasText(idToken) || !hasText(localId)) throw new Exception("Firebase auth failed");
+        prefs.edit()
+                .putString(KEY_FIREBASE_AUTH_TOKEN, idToken)
+                .putString(KEY_FIREBASE_AUTH_UID, localId)
+                .putLong(KEY_FIREBASE_AUTH_EXPIRES_AT, System.currentTimeMillis() + Math.max(600L, expiresIn - 60L) * 1000L)
+                .apply();
+    }
+
+    private String httpJsonAuth(String method, String urlText, String body, String token) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) new URL(urlText).openConnection();
+        conn.setRequestMethod(method);
+        conn.setConnectTimeout(9000);
+        conn.setReadTimeout(12000);
+        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
+        conn.setRequestProperty("Accept", "application/json");
+        conn.setRequestProperty("User-Agent", "BalkesArsivi-Android");
+        if (hasText(token)) conn.setRequestProperty("Authorization", "Bearer " + token);
+        conn.setDoInput(true);
+        if (body != null) {
+            conn.setDoOutput(true);
+            byte[] bytes = body.getBytes("UTF-8");
+            OutputStream out = conn.getOutputStream();
+            out.write(bytes);
+            out.flush();
+            out.close();
+        }
+        int code = conn.getResponseCode();
+        InputStream in = code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        if (in != null) {
+            byte[] buffer = new byte[4096];
+            int len;
+            while ((len = in.read(buffer)) != -1) out.write(buffer, 0, len);
+            in.close();
+        }
+        String response = out.toString("UTF-8");
+        if (code < 200 || code >= 300) throw new Exception("HTTP " + code + ": " + response);
+        return response;
+    }
+
+    private String getStringField(JSONObject fields, String name) {
+        try {
+            JSONObject f = fields.optJSONObject(name);
+            if (f == null) return "";
+            if (f.has("stringValue")) return f.optString("stringValue", "");
+            if (f.has("integerValue")) return f.optString("integerValue", "");
+            return "";
+        } catch (Throwable ignored) { return ""; }
+    }
+
+    private long getLongField(JSONObject fields, String name) {
+        try {
+            JSONObject f = fields.optJSONObject(name);
+            if (f == null) return 0L;
+            if (f.has("integerValue")) return Long.parseLong(f.optString("integerValue", "0"));
+            return 0L;
+        } catch (Throwable ignored) { return 0L; }
+    }
+
     private void askSavePhoto() {
         new AlertDialog.Builder(this)
                 .setTitle("Görsel kaydedilsin mi?")
@@ -2156,6 +2562,8 @@ public class MainActivity extends Activity {
         prefs.edit().putInt(KEY_TEXT_SIZE, textSizeSp).apply();
         if (currentItem != null) showArchiveDetail(currentItem, currentPhotoIndex);
         else if ("archive_list".equals(screen)) showArchiveList(currentQuery);
+        else if ("submissions".equals(screen)) showHome();
+        else if ("submission_form".equals(screen) || "submission_detail".equals(screen)) showSubmissionsList();
         else showHome();
     }
 
