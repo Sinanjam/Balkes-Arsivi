@@ -96,11 +96,12 @@ public class MainActivity extends Activity {
     private static final int REQUEST_NOTIFICATIONS = 2211;
     private static final String GITHUB_RAW_BASE = "https://raw.githubusercontent.com/Sinanjam/Balkes-Arsivi/main/app/src/main/assets/";
     private static final String REMOTE_ARCHIVE_URL = GITHUB_RAW_BASE + "archive/archive_items.json";
-    private static final String APP_VERSION_NAME = "2.2";
-    private static final int APP_VERSION_CODE = 220;
+    private static final String APP_VERSION_NAME = "2.2.1";
+    private static final int APP_VERSION_CODE = 221;
     private static final int MAX_INLINE_TABLES = 8;
     private static final int ARCHIVE_PAGE_SIZE = 24;
     private static final String WEB_SITE_URL = "https://sinanjam.github.io/Balkes-Arsivi-Web/";
+    private static final String BALKES_SKOR_URL = "https://sinanjam.github.io/balkes-skor-web/";
     private static final String FIREBASE_PROJECT_ID = "balkes-arsivi";
     private static final String FIREBASE_API_KEY = "AIzaSyCQ7HB7pmQ_mODZIjAVaM9JC_4deMMO1iI";
     private static final String FIRESTORE_COLLECTION = "installations";
@@ -321,6 +322,10 @@ public class MainActivity extends Activity {
         TextView webCard = homeCard("Web Sitesi");
         webCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { openExternalUrl(WEB_SITE_URL); } });
         content.addView(webCard, homeCardParams());
+
+        TextView balkesSkorCard = homeCard("Balkes Skor");
+        balkesSkorCard.setOnClickListener(new View.OnClickListener() { @Override public void onClick(View v) { openExternalUrl(BALKES_SKOR_URL); } });
+        content.addView(balkesSkorCard, homeCardParams());
 
 
         root.addView(scroll, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
@@ -1988,8 +1993,10 @@ public class MainActivity extends Activity {
         if (APP_VERSION_NAME.equals(seen)) return;
         prefs.edit().putString(KEY_LAST_VERSION_SEEN, APP_VERSION_NAME).putBoolean(KEY_READER_MODE, false).apply();
         new AlertDialog.Builder(this)
-                .setTitle("Balkes Arşivi 2.2")
+                .setTitle("Balkes Arşivi 2.2.1")
                 .setMessage("Güncelleme notları:\n\n" +
+                        "• Ana ekranın en altına Balkes Skor butonu eklendi.\n" +
+                        "• Balkes Skor butonu dış tarayıcıda balkes-skor-web sitesini açacak şekilde ayarlandı.\n" +
                         "• Sizden Gelenler bölümü eklendi.\n" +
                         "• Kullanıcıların yazı gönderebilmesi sağlandı.\n" +
                         "• Gönderiler manuel onaydan sonra yayınlanacak şekilde hazırlandı.\n" +
